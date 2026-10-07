@@ -1,0 +1,1787 @@
+<meta charset="utf-8">
+<title>Nexus Bridge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* ---------- Tokens (light is the default, per the design spec) ---------- */
+:root{
+  color-scheme:light;
+  --bg:#F8FAFC; --panel:#FFFFFF; --card:#FFFFFF; --card-2:#F8FAFC; --card-3:#F1F5F9; --code:#F8FAFC;
+  --line:#E2E8F0; --line-2:#CBD5E1;
+  --text:#0F172A; --text-2:#334155; --muted:#64748B; --faint:#94A3B8;
+  --action:#2563EB; --action-hi:#1D4ED8; --action-bg:#EFF6FF; --action-line:#BFDBFE; --on-action:#FFFFFF;
+  --ok:#10B981; --ok-text:#047857; --ok-bg:#ECFDF5; --ok-line:#A7F3D0;
+  --warn:#F59E0B; --warn-text:#B45309; --warn-bg:#FFFBEB; --warn-line:#FDE68A;
+  --bad:#EF4444; --bad-text:#B91C1C; --bad-bg:#FEF2F2; --bad-line:#FECACA;
+  --k:#334155; --s:#047857; --n:#B45309; --b:#2563EB;
+  --shadow:0 1px 2px rgba(15,23,42,.05), 0 1px 3px rgba(15,23,42,.04);
+  --shadow-md:0 4px 12px -2px rgba(15,23,42,.08), 0 2px 4px -2px rgba(15,23,42,.05);
+  --shadow-lg:0 24px 48px -12px rgba(15,23,42,.28);
+  --scrim:rgba(15,23,42,.35);
+  --r-lg:12px; --r-md:10px; --r-sm:8px;
+  --sans:'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+/* Optional dark look (toggle in the header) */
+html[data-app-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E0F0E; --panel:#161716; --card:#1A1B1A; --card-2:#202120; --card-3:#272827; --code:#141514;
+  --line:#272827; --line-2:#343534;
+  --text:#ECEDEC; --text-2:#C4C6C4; --muted:#8E918E; --faint:#5F625F;
+  --action:#3B82F6; --action-hi:#60A5FA; --action-bg:#14203A; --action-line:#1F3A66; --on-action:#FFFFFF;
+  --ok:#2EC48A; --ok-text:#4BD9A0; --ok-bg:#0F241B; --ok-line:#1D4634;
+  --warn:#EAB04E; --warn-text:#EAB04E; --warn-bg:#261E10; --warn-line:#4A3918;
+  --bad:#EE6B6B; --bad-text:#F08A8A; --bad-bg:#281414; --bad-line:#4A2323;
+  --k:#C9CCC9; --s:#9FD9BE; --n:#E6C98F; --b:#A9B8F0;
+  --shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 10px 28px -14px rgba(0,0,0,.7);
+  --shadow-md:0 1px 0 rgba(255,255,255,.03) inset, 0 12px 32px -14px rgba(0,0,0,.75);
+  --shadow-lg:0 24px 60px -20px rgba(0,0,0,.85);
+  --scrim:rgba(5,6,5,.6);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0; background:var(--bg); color:var(--text); font:14px/1.5 var(--sans); padding-inline:16px; padding-block:14px 96px; -webkit-font-smoothing:antialiased}
+button,select{font:inherit; color:inherit}
+h1,h2,h3{margin:0; font-weight:600; text-wrap:balance}
+p{margin:0}
+.mono{font-family:var(--mono); font-size:.9em; letter-spacing:-.01em}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)} .faint{color:var(--faint)}
+.ic{flex:none; display:block}
+:focus-visible{outline:2px solid var(--action); outline-offset:2px; border-radius:6px}
+
+/* ---------- Shell ---------- */
+.app{display:grid; grid-template-columns:240px minmax(0,1fr); gap:14px; max-width:1480px; margin:0 auto}
+.sidebar{position:sticky; top:14px; align-self:start; height:calc(100vh - 28px); background:var(--panel); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--shadow); display:flex; flex-direction:column; gap:20px; padding:14px}
+.brand{display:flex; align-items:center; gap:10px; padding:4px 6px}
+.brand-mark{width:32px; height:32px; border-radius:9px; background:var(--text); display:grid; place-items:center; color:var(--panel)}
+.brand b{display:block; font-size:14px; font-weight:600}
+.brand span{display:block; font-size:11.5px; color:var(--muted)}
+.nav{display:flex; flex-direction:column; gap:2px}
+.nav-label{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); padding:8px 8px 6px; font-weight:500}
+.nav-item{display:flex; align-items:center; gap:10px; min-height:38px; padding:0 10px; border-radius:var(--r-sm); border:1px solid transparent; background:none; color:var(--text-2); cursor:pointer; text-align:left; width:100%; font-size:13.5px; font-weight:500}
+.nav-item:hover{background:var(--card-3); color:var(--text)}
+.nav-item.active{background:var(--action-bg); border-color:var(--action-line); color:var(--action)}
+.nav-item .ic{color:var(--muted)}
+.nav-item.active .ic{color:var(--action)}
+.nav-item .count{margin-left:auto; font-size:11.5px; min-width:20px; height:20px; padding:0 6px; border-radius:999px; display:grid; place-items:center; background:var(--warn-bg); color:var(--warn-text); border:1px solid var(--warn-line); font-weight:600}
+.nav-item .count.zero{background:var(--card-3); color:var(--muted); border-color:var(--line)}
+.nav-item .n-sub{display:block; font-size:11px; color:var(--faint); font-weight:400}
+.side-foot{margin-top:auto; display:flex; flex-direction:column; gap:10px}
+.sources{display:flex; flex-direction:column; gap:8px; padding:12px; background:var(--card-2); border:1px solid var(--line); border-radius:var(--r-md)}
+.sources-head{display:flex; justify-content:space-between; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); font-weight:500}
+.src-row{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-2)}
+.src-row .mono{margin-left:auto; color:var(--muted); font-size:11px}
+.dot{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 3px var(--ok-bg); flex:none}
+.sim-note{font-size:11.5px; color:var(--muted); line-height:1.45; display:flex; gap:6px}
+.sim-note .ic{color:var(--warn); margin-top:2px}
+
+main{display:flex; flex-direction:column; gap:16px; min-width:0}
+.topbar-wrap{position:sticky; top:env(safe-area-inset-top,0px); z-index:30; background:var(--bg); padding-top:14px; margin-top:-14px}
+.topbar{display:flex; align-items:center; gap:14px; background:var(--panel); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--shadow); padding:10px 12px 10px 16px}
+.crumb{font-size:13px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:280px}
+.crumb b{color:var(--text); font-weight:600}
+.top-search{position:relative; flex:1; max-width:560px; margin-inline:auto}
+.top-right{display:flex; align-items:center; gap:8px}
+.avatar{width:32px; height:32px; border-radius:50%; background:var(--card-3); border:1px solid var(--line); display:grid; place-items:center; font-size:12px; font-weight:600; color:var(--text-2)}
+
+/* ---------- Primitives ---------- */
+.card{background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--shadow); min-width:0}
+.card-head{display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--line); flex-wrap:wrap}
+.card-head h2{font-size:14.5px; font-weight:600; display:flex; align-items:center; gap:8px}
+.card-head h2 .ic{color:var(--muted)}
+.card-head .right{margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.card-body{padding:16px}
+.pill{display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 10px; border-radius:999px; font-size:12px; font-weight:500; white-space:nowrap; background:var(--card-3); border:1px solid var(--line); color:var(--text-2)}
+.pill.ok{background:var(--ok-bg); border-color:var(--ok-line); color:var(--ok-text)}
+.pill.warn{background:var(--warn-bg); border-color:var(--warn-line); color:var(--warn-text)}
+.pill.bad{background:var(--bad-bg); border-color:var(--bad-line); color:var(--bad-text)}
+.pill.info{background:var(--action-bg); border-color:var(--action-line); color:var(--action)}
+.pill.sm{height:20px; padding:0 8px; font-size:11px}
+.pill.caps{letter-spacing:.05em; font-size:10.5px; font-weight:600; text-transform:uppercase}
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; height:36px; padding:0 14px; border-radius:var(--r-sm); border:1px solid var(--line-2); background:var(--card); color:var(--text); font-size:13px; font-weight:500; cursor:pointer; white-space:nowrap; box-shadow:var(--shadow); transition:background .15s, border-color .15s}
+.btn:hover{background:var(--card-3)}
+.btn[disabled]{opacity:.5; cursor:not-allowed}
+.btn-primary{background:var(--action); color:var(--on-action); border-color:transparent}
+.btn-primary:hover{background:var(--action-hi)}
+.btn-danger{color:var(--bad-text); border-color:var(--bad-line)}
+.btn-danger:hover{background:var(--bad-bg)}
+.btn-ghost{background:transparent; border-color:transparent; color:var(--muted); box-shadow:none}
+.btn-ghost:hover{background:var(--card-3); color:var(--text)}
+.btn-lg{height:46px; padding:0 22px; font-size:14.5px}
+.btn-sm{height:30px; padding:0 10px; font-size:12.5px}
+.btn-icon{width:34px; padding:0}
+.chip{display:inline-flex; align-items:center; gap:6px; height:28px; padding:0 11px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--text-2); font-size:12.5px; cursor:pointer}
+.chip:hover{border-color:var(--action-line); color:var(--action)}
+.chip.warn{border-color:var(--warn-line); color:var(--warn-text); background:var(--warn-bg)}
+.chip.bad{border-color:var(--bad-line); color:var(--bad-text); background:var(--bad-bg)}
+.kbd{font:500 11px var(--mono); color:var(--muted); border:1px solid var(--line); background:var(--card-3); border-radius:6px; padding:2px 6px}
+.select{height:32px; border-radius:var(--r-sm); border:1px solid var(--line-2); background:var(--card); color:var(--text); padding:0 28px 0 10px; font-size:12.5px; cursor:pointer}
+.field{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted)}
+
+.search{display:flex; align-items:center; gap:10px; height:40px; padding:0 8px 0 12px; background:var(--card-2); border:1px solid var(--line); border-radius:var(--r-md)}
+.search:focus-within{border-color:var(--action); box-shadow:0 0 0 3px var(--action-bg); background:var(--card)}
+.search .ic{color:var(--muted)}
+.search input{flex:1; min-width:0; background:none; border:0; outline:0; color:var(--text); font:14px var(--sans)}
+.search input::placeholder{color:var(--faint)}
+.search.xl{height:58px; padding:0 8px 0 18px; border-radius:12px; background:var(--card)}
+.search.xl input{font-size:16px}
+.dropdown{position:absolute; left:0; right:0; top:calc(100% + 6px); background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow-lg); padding:6px; z-index:50}
+.dd-item{display:flex; align-items:center; gap:10px; width:100%; padding:8px 10px; border-radius:8px; background:none; border:0; cursor:pointer; text-align:left}
+.dd-item:hover,.dd-item.hl{background:var(--card-3)}
+.dd-item .mono{color:var(--text)}
+.dd-item .sub{color:var(--muted); font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.dd-item .pill{margin-left:auto}
+.dd-foot{display:flex; justify-content:space-between; gap:10px; padding:8px 10px 4px; border-top:1px solid var(--line); margin-top:4px; font-size:11.5px; color:var(--faint)}
+
+.page-head{display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap}
+.page-head h1{font-size:22px; letter-spacing:-.015em}
+.page-head p{color:var(--muted); margin-top:4px; max-width:78ch}
+.page-head .right{margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.eyebrow{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--action); font-weight:600}
+
+.table-wrap{overflow-x:auto}
+table{width:100%; border-collapse:collapse; font-size:13px}
+th{text-align:left; font-weight:600; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); padding:10px 14px; border-bottom:1px solid var(--line); background:var(--card-2); white-space:nowrap}
+td{padding:11px 14px; border-bottom:1px solid var(--line); color:var(--text-2); vertical-align:middle; white-space:nowrap}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--card-2)}
+td.r,th.r{text-align:right}
+.id{font-family:var(--mono); font-size:12.5px; color:var(--text)}
+.idlink{font-family:var(--mono); font-size:12.5px; color:var(--action); background:none; border:0; padding:0; cursor:pointer}
+.idlink:hover{text-decoration:underline; text-underline-offset:3px}
+.idlink.self{color:var(--text); font-weight:600; cursor:default; text-decoration:none}
+
+.grid{display:grid; gap:16px}
+.g-kpi{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g-2{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+.view{display:flex; flex-direction:column; gap:16px}
+.sim-tag{display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--warn-text); background:var(--warn-bg); border:1px solid var(--warn-line); border-radius:6px; padding:1px 6px}
+
+/* ---------- Overview ---------- */
+.hero{padding:28px; display:flex; flex-direction:column; gap:18px}
+.hero h1{font-size:26px; letter-spacing:-.02em}
+.hero p{color:var(--muted); max-width:66ch}
+.hero .search-box{position:relative; max-width:780px}
+.try{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.try .label{font-size:12px; color:var(--faint); margin-right:2px; min-width:74px}
+.kpi{padding:16px; display:flex; flex-direction:column; gap:6px}
+.kpi .label{font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:6px; justify-content:space-between}
+.kpi .val{font-size:28px; font-weight:600; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+.kpi .val small{font-size:15px; color:var(--muted); font-weight:500; margin-left:2px}
+.kpi .foot{font-size:12px; color:var(--faint)}
+.flow{display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:10px; align-items:stretch; padding:16px}
+.flow-step{border:1px solid var(--line); border-radius:var(--r-md); padding:14px; background:var(--card-2); display:flex; flex-direction:column; gap:8px}
+.flow-step h3{font-size:14px; display:flex; align-items:center; gap:8px}
+.flow-step p{font-size:12.5px; color:var(--muted); flex:1}
+.flow-step .ic-b{width:28px; height:28px; border-radius:8px; display:grid; place-items:center; background:var(--action-bg); color:var(--action); border:1px solid var(--action-line)}
+.flow-step.w .ic-b{background:var(--warn-bg); color:var(--warn-text); border-color:var(--warn-line)}
+.flow-arrow{display:grid; place-items:center; color:var(--faint)}
+
+/* ---------- Entity ---------- */
+.back{display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); background:none; border:0; cursor:pointer; padding:0; align-self:flex-start}
+.back:hover{color:var(--text)}
+.back .ic{transform:rotate(180deg)}
+.ent-head{padding:20px; display:flex; flex-direction:column; gap:16px}
+.ent-top{display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap}
+.ent-logo{width:48px; height:48px; border-radius:12px; background:var(--card-3); border:1px solid var(--line); display:grid; place-items:center; font-weight:700; font-size:16px; color:var(--text-2); flex:none}
+.ent-title{display:flex; flex-direction:column; gap:8px; min-width:0}
+.ent-title h1{font-size:22px; letter-spacing:-.015em}
+.ent-title .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.ent-title .sub{font-size:13px; color:var(--muted)}
+.ent-actions{margin-left:auto; display:flex; gap:8px; flex-wrap:wrap}
+.meta{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:var(--r-md); overflow:hidden; margin:0}
+.meta div{background:var(--card-2); padding:10px 14px; min-width:0}
+.meta dt{font-size:11.5px; color:var(--muted)}
+.meta dd{margin:2px 0 0; font-size:14px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.meta dd.ok{color:var(--ok-text)}
+.trace{display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); padding:10px 14px; border-radius:var(--r-md); background:var(--code); border:1px dashed var(--line-2)}
+.trace .id{font-size:12px}
+.trace .arrow{color:var(--faint)}
+.trace .rule{font-family:var(--mono); font-size:11.5px; color:var(--ok-text); background:var(--ok-bg); border:1px solid var(--ok-line); border-radius:6px; padding:1px 7px}
+.trace .sep{width:1px; height:14px; background:var(--line-2)}
+.banner{display:flex; gap:12px; align-items:flex-start; padding:12px 14px; border-radius:var(--r-md); font-size:13px; color:var(--text-2)}
+.banner.ok{background:var(--ok-bg); border:1px solid var(--ok-line)}
+.banner.warn{background:var(--warn-bg); border:1px solid var(--warn-line)}
+.banner.info{background:var(--action-bg); border:1px solid var(--action-line)}
+.banner.bad{background:var(--bad-bg); border:1px solid var(--bad-line)}
+.banner .ic{margin-top:2px}
+.banner.ok .ic{color:var(--ok-text)} .banner.warn .ic{color:var(--warn-text)} .banner.info .ic{color:var(--action)} .banner.bad .ic{color:var(--bad-text)}
+
+.tree,.tree ul{list-style:none; margin:0; padding:0}
+.tree ul{padding-left:20px; margin-left:12px; border-left:1px dashed var(--line-2)}
+.tree-wrap{padding:10px 12px 14px; overflow-x:auto}
+.tn{display:flex; align-items:center; gap:8px; min-height:36px; padding:3px 8px; border-radius:8px; min-width:max-content}
+.tn:hover{background:var(--card-2)}
+.tn.current{background:var(--ok-bg); box-shadow:0 0 0 1px var(--ok-line) inset}
+.tw{width:22px; height:22px; display:grid; place-items:center; border:0; background:none; cursor:pointer; color:var(--muted); border-radius:6px; flex:none}
+.tw:hover{background:var(--card-3); color:var(--text)}
+.tw .ic{transition:transform .15s}
+.tw.open .ic{transform:rotate(90deg)}
+.tw-sp{width:22px; flex:none}
+.tchip{font:600 10px var(--sans); letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:5px; border:1px solid var(--line-2); color:var(--text-2); background:var(--card); white-space:nowrap; min-width:64px; text-align:center}
+.tchip.ses{background:var(--ok-bg); border-color:var(--ok-line); color:var(--ok-text)}
+.tchip.sub{background:var(--action-bg); border-color:var(--action-line); color:var(--action)}
+.tchip.pi{background:var(--card-3); border-color:var(--line); color:var(--muted)}
+.tchip.dis{background:var(--warn-bg); border-color:var(--warn-line); color:var(--warn-text)}
+.tn .id{font-size:12.5px}
+.tn .lbl{color:var(--text-2); font-size:13px}
+.tn .meta-r{margin-left:auto; padding-left:18px; font-size:12px; color:var(--faint); display:flex; gap:8px; align-items:center}
+.tn.grp .lbl{font-size:11.5px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted)}
+.rule-tag{font-family:var(--mono); font-size:11px; color:var(--text-2); background:var(--card-3); border-radius:5px; padding:1px 6px}
+
+.ccy{border:1px solid var(--line); border-radius:var(--r-md); padding:14px; display:flex; flex-direction:column; gap:10px; background:var(--card-2)}
+.ccy-h{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted)}
+.ccy-h b{font:600 13px var(--mono); color:var(--text)}
+.ccy-grid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px}
+.ccy-grid .l{font-size:11.5px; color:var(--muted)}
+.ccy-grid .v{font-size:18px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.ccy-grid .v.pend{color:var(--warn-text)}
+.fin{display:flex; flex-direction:column; gap:12px}
+.amt-in{color:var(--ok-text)} .amt-out{color:var(--text-2)}
+tr.fresh{animation:rowIn 2.2s ease-out}
+@keyframes rowIn{0%{background:var(--ok-bg)}100%{background:transparent}}
+.filters{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+.empty-state{padding:36px 24px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px}
+.empty-state .ic-wrap{width:44px; height:44px; border-radius:12px; display:grid; place-items:center; background:var(--card-3); border:1px solid var(--line); color:var(--muted)}
+.empty-state .ic-wrap.warn{background:var(--warn-bg); border-color:var(--warn-line); color:var(--warn-text)}
+.empty-state .ic-wrap.bad{background:var(--bad-bg); border-color:var(--bad-line); color:var(--bad-text)}
+.empty-state .ic-wrap.ok{background:var(--ok-bg); border-color:var(--ok-line); color:var(--ok-text)}
+.empty-state h2{font-size:17px}
+.empty-state p{color:var(--muted); max-width:60ch}
+.cands{display:flex; flex-direction:column; gap:8px; width:100%; max-width:560px; text-align:left}
+.cand{display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--card-2)}
+.results{display:flex; flex-direction:column}
+.res{display:flex; align-items:center; gap:14px; padding:14px 16px; border:0; border-bottom:1px solid var(--line); background:none; width:100%; text-align:left; cursor:pointer}
+.res:last-child{border-bottom:0}
+.res:hover{background:var(--card-2)}
+.res .name{font-weight:600}
+.res .sub{font-size:12.5px; color:var(--muted)}
+.res .pill{margin-left:auto}
+
+/* ---------- Simulator ---------- */
+.seg{display:inline-flex; padding:3px; gap:2px; background:var(--card-3); border:1px solid var(--line); border-radius:10px; flex-wrap:wrap}
+.seg button{height:30px; padding:0 12px; border-radius:8px; border:0; background:none; color:var(--muted); font-size:12.5px; font-weight:500; cursor:pointer}
+.seg button.active{background:var(--card); color:var(--text); box-shadow:var(--shadow)}
+.seg button[disabled]{cursor:not-allowed}
+.pipe{display:flex; align-items:center; padding:16px; overflow-x:auto}
+.stage{display:flex; align-items:center; gap:10px; flex:none}
+.stage .b{width:28px; height:28px; border-radius:50%; border:1px solid var(--line-2); background:var(--card); display:grid; place-items:center; color:var(--faint); font:500 11.5px var(--mono)}
+.stage .t{font-size:12.5px; color:var(--muted); line-height:1.25}
+.stage .t span{display:block; font-size:11px; color:var(--faint); font-family:var(--mono)}
+.stage.active .b{border-color:var(--action); color:var(--action); box-shadow:0 0 0 4px var(--action-bg)}
+.stage.done .b{background:var(--ok); border-color:var(--ok); color:#fff}
+.stage.done .t,.stage.active .t{color:var(--text)}
+.stage.fail .b{background:var(--bad); border-color:var(--bad); color:#fff}
+.stage.fail .t{color:var(--bad-text)}
+.stage.skip{opacity:.4}
+.connector{flex:1; min-width:22px; height:1.5px; background:var(--line-2); margin:0 10px}
+.connector.done{background:var(--ok)}
+.panes{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px}
+.pane{display:flex; flex-direction:column}
+.pane-sub{padding:10px 16px; font-size:12.5px; border-bottom:1px solid var(--line); color:var(--muted)}
+.code{margin:14px; background:var(--code); border:1px solid var(--line); border-radius:10px; font:12.5px/1.75 var(--mono); overflow:auto; padding:10px 0; min-height:330px}
+.code-line{display:flex; border-left:3px solid transparent; padding-right:14px}
+.ln{width:38px; text-align:right; padding-right:12px; color:var(--faint); user-select:none; flex:none}
+.lc{white-space:pre; flex:1}
+.k{color:var(--k)} .s{color:var(--s)} .nm{color:var(--n)} .bo{color:var(--b)} .p{color:var(--faint)}
+.code-line.inj{background:var(--ok-bg); border-left-color:var(--ok); animation:flash 1.8s ease-out}
+.code-line.inj .k{color:var(--ok-text); font-weight:600}
+.code-line.inj2{background:var(--action-bg); border-left-color:var(--action-line)}
+.code-line.inj2 .k{color:var(--action)}
+.code-line.held{background:var(--warn-bg); border-left-color:var(--warn)}
+.code-line.held .k{color:var(--warn-text); font-weight:600}
+@keyframes flash{0%{background:#FEF08A}100%{background:var(--ok-bg)}}
+.tag{font:600 10px var(--sans); letter-spacing:.04em; text-transform:uppercase; color:var(--ok-text); border:1px solid var(--ok-line); background:var(--card); border-radius:999px; padding:0 8px; line-height:18px; align-self:center; margin-left:12px; white-space:nowrap}
+.inj2 .tag{color:var(--action); border-color:var(--action-line)}
+.held .tag{color:var(--warn-text); border-color:var(--warn-line)}
+.code-empty{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center; color:var(--faint); font-size:13px; min-height:330px; margin:14px; border:1px dashed var(--line-2); border-radius:10px}
+.spinner{width:22px; height:22px; border-radius:50%; border:2px solid var(--line-2); border-top-color:var(--action); animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.legend-row{display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--muted); padding:0 16px 14px}
+.legend-row span{display:inline-flex; align-items:center; gap:6px}
+.legend-row i{width:10px; height:10px; border-radius:3px; display:inline-block; border-left:3px solid}
+.run-bar{display:flex; align-items:center; gap:18px; padding:16px 18px; flex-wrap:wrap}
+.run-bar .desc{flex:1; min-width:240px; font-size:13px; color:var(--text-2)}
+.run-bar .desc .muted{display:block; font-size:12px; margin-top:2px}
+.checks{display:flex; flex-direction:column}
+.check{display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:10px; align-items:start; padding:11px 16px; border-top:1px solid var(--line); font-size:13px}
+.check .ci{width:20px; height:20px; border-radius:50%; display:grid; place-items:center; margin-top:1px}
+.check.ok .ci{background:var(--ok-bg); color:var(--ok-text)}
+.check.bad .ci{background:var(--bad-bg); color:var(--bad-text)}
+.check.warn .ci{background:var(--warn-bg); color:var(--warn-text)}
+.check b{font-weight:600; color:var(--text)}
+.check .d{display:block; color:var(--muted); font-size:12.5px; margin-top:1px}
+.check-foot{padding:10px 16px 14px; font-size:11.5px; color:var(--faint); border-top:1px solid var(--line)}
+
+/* ---------- Queue ---------- */
+.tabs{display:inline-flex; gap:2px; padding:3px; background:var(--card-3); border:1px solid var(--line); border-radius:10px}
+.tabs button{height:30px; padding:0 12px; border:0; border-radius:8px; background:none; color:var(--muted); font-size:12.5px; font-weight:500; cursor:pointer}
+.tabs button.active{background:var(--card); color:var(--text); box-shadow:var(--shadow)}
+.reason{white-space:normal; min-width:220px; max-width:320px}
+tr.leaving{opacity:0; transform:translateX(24px); transition:opacity .35s, transform .35s}
+.held-n{display:block; font-size:11.5px; color:var(--warn-text); margin-top:2px}
+
+/* ---------- Slide-over ---------- */
+.scrim{position:fixed; inset:0; background:var(--scrim); z-index:60; opacity:0; transition:opacity .2s}
+.scrim.open{opacity:1}
+.sheet{position:fixed; top:0; right:0; bottom:0; width:min(700px,100%); background:var(--panel); border-left:1px solid var(--line); box-shadow:var(--shadow-lg); z-index:61; display:flex; flex-direction:column; transform:translateX(100%); transition:transform .28s cubic-bezier(.2,.8,.2,1); padding-top:env(safe-area-inset-top,0px)}
+.sheet.open{transform:none}
+.sheet-head{display:flex; gap:12px; align-items:flex-start; padding:18px 20px; border-bottom:1px solid var(--line)}
+.sheet-head h2{font-size:17px; display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.sheet-head p{font-size:12.5px; color:var(--muted); margin-top:4px}
+.sheet-body{flex:1; overflow-y:auto; padding:18px 20px; display:flex; flex-direction:column; gap:16px}
+.sheet-foot{border-top:1px solid var(--line); padding:14px 20px calc(14px + env(safe-area-inset-bottom,0px)); display:flex; flex-direction:column; gap:10px; background:var(--panel)}
+.sheet-foot .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.sheet-foot .hint{font-size:12px; color:var(--muted)}
+.sec-title{font-size:11.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:8px}
+.cmp-table{border:1px solid var(--line); border-radius:var(--r-md); overflow:hidden}
+.cmp-table table{font-size:12.5px}
+.cmp-table th{text-transform:none; letter-spacing:0; font-size:12px; font-weight:500; color:var(--muted); padding:10px 12px; vertical-align:top}
+.cmp-table th .id{display:block; font-size:12px; margin-top:2px; font-weight:600}
+.cmp-table th .nm2{display:block; font-size:11.5px; color:var(--faint)}
+.cmp-table td{padding:10px 12px; white-space:normal}
+.cmp-table td:first-child{color:var(--muted); width:22%}
+.cmp-table tr.conflict td{background:var(--bad-bg)}
+.cmp-table tr.conflict td:nth-child(2){color:var(--bad-text); font-weight:600}
+.cmp-table tr.missing td,.cmp-table tr.split td{background:var(--warn-bg)}
+.cmp-table td.eq{color:var(--ok-text); font-weight:600}
+.st{display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; white-space:nowrap}
+.st.match{color:var(--ok-text)} .st.similar{color:var(--action)} .st.conflict{color:var(--bad-text)} .st.missing,.st.split{color:var(--warn-text)} .st.info{color:var(--faint)}
+.why{border:1px solid var(--warn-line); background:var(--warn-bg); border-radius:var(--r-md); padding:14px; display:flex; flex-direction:column; gap:6px}
+.why.bad{border-color:var(--bad-line); background:var(--bad-bg)}
+.why .h{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:var(--warn-text)}
+.why.bad .h{color:var(--bad-text)}
+.why p{font-size:13px; color:var(--text-2); line-height:1.55}
+.evid{border:1px solid var(--line); border-radius:var(--r-md); overflow:hidden}
+.evid .row{display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:10px; align-items:center; padding:9px 12px; border-top:1px solid var(--line); font-size:13px}
+.evid .row:first-child{border-top:0}
+.evid .ci{width:20px; height:20px; border-radius:50%; display:grid; place-items:center}
+.evid .ok .ci{background:var(--ok-bg); color:var(--ok-text)}
+.evid .no .ci{background:var(--bad-bg); color:var(--bad-text)}
+.evid .row span.d{font-size:12px; color:var(--muted)}
+.evid .verdict{padding:10px 12px; font-size:12.5px; font-weight:600; border-top:1px solid var(--line)}
+.evid .verdict.ok{background:var(--ok-bg); color:var(--ok-text)}
+.evid .verdict.no{background:var(--card-2); color:var(--bad-text)}
+.note{border:1px solid var(--line); border-radius:var(--r-md); padding:14px; background:var(--card-2); display:flex; flex-direction:column; gap:8px}
+.note .h{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:var(--text-2)}
+.note p{font-size:13.5px; line-height:1.55}
+.suppl{display:flex; align-items:center; gap:10px; font-size:12px; color:var(--muted); flex-wrap:wrap}
+.suppl .bar{position:relative; width:110px; height:6px; border-radius:999px; background:var(--card-3)}
+.suppl .bar i{position:absolute; inset:0 auto 0 0; border-radius:999px; background:var(--faint)}
+.guard{border:1px solid var(--action-line); background:var(--action-bg); border-radius:var(--r-md); padding:12px; display:flex; flex-direction:column; gap:10px}
+.guard p{font-size:13px; color:var(--text-2)}
+
+/* ---------- Activity ---------- */
+.actor{display:flex; align-items:center; gap:8px}
+.actor i{width:22px; height:22px; border-radius:50%; display:grid; place-items:center; font-style:normal; font-size:9.5px; font-weight:700; background:var(--card-3); color:var(--text-2); border:1px solid var(--line); flex:none}
+.actor i.sys{background:var(--text); color:var(--panel); border-color:var(--text)}
+.detail{white-space:normal; min-width:260px; color:var(--muted)}
+
+/* ---------- Toasts & guide ---------- */
+.toasts{position:fixed; right:16px; top:calc(80px + env(safe-area-inset-top,0px)); display:flex; flex-direction:column; gap:8px; z-index:80; width:min(440px, calc(100% - 32px)); pointer-events:none}
+.toast{pointer-events:auto; display:flex; align-items:center; gap:10px; padding:11px 12px 11px 14px; background:var(--card); border:1px solid var(--line); border-left:4px solid var(--ok); border-radius:10px; box-shadow:var(--shadow-lg); font-size:13px; animation:toastIn .25s ease-out}
+.toast .ic{color:var(--ok-text)}
+.toast.warn{border-left-color:var(--warn)} .toast.warn .ic{color:var(--warn-text)}
+.toast.bad{border-left-color:var(--bad)} .toast.bad .ic{color:var(--bad-text)}
+.toast.info{border-left-color:var(--action)} .toast.info .ic{color:var(--action)}
+.toast .msg{flex:1; font-weight:500}
+.toast .msg span{display:block; font-family:var(--mono); font-size:11.5px; color:var(--muted); margin-top:1px; font-weight:400}
+.toast.out{opacity:0; transform:translateY(-6px); transition:all .25s}
+@keyframes toastIn{from{opacity:0; transform:translateY(-8px)}}
+.sheet.open ~ .toasts{right:calc(min(700px,100%) + 16px)}
+@media (max-width:1180px){ .sheet.open ~ .toasts{right:16px; top:auto; bottom:calc(150px + env(safe-area-inset-bottom,0px))} }
+.guide{position:fixed; right:16px; bottom:calc(16px + env(safe-area-inset-bottom,0px)); width:320px; z-index:40; background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--shadow-lg)}
+.guide-head{display:flex; align-items:center; gap:10px; padding:12px 12px 12px 14px; cursor:pointer; background:none; border:0; width:100%; text-align:left}
+.guide-head b{font-size:13px; font-weight:600}
+.guide-head .prog{font-size:12px; color:var(--muted); margin-left:auto}
+.guide-head .chev{color:var(--muted); transform:rotate(90deg); transition:transform .2s}
+.guide.collapsed .guide-head .chev{transform:rotate(-90deg)}
+.guide-bar{height:2px; background:var(--line); margin:0 14px}
+.guide-bar i{display:block; height:100%; background:var(--action); transition:width .3s}
+.guide-steps{list-style:none; margin:0; padding:8px; display:flex; flex-direction:column; gap:2px}
+.guide-next{display:none; align-items:center; gap:10px; padding:0 12px 12px 14px; font-size:12.5px; color:var(--text-2)}
+.guide-next span{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.guide.collapsed .guide-steps,.guide.collapsed .guide-foot,.guide.collapsed .guide-bar{display:none}
+.guide.collapsed .guide-next{display:flex}
+.gs{display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:10px; align-items:center; padding:8px; border-radius:8px}
+.gs .b{width:22px; height:22px; border-radius:50%; border:1px solid var(--line-2); display:grid; place-items:center; font:500 11px var(--mono); color:var(--faint)}
+.gs .t{font-size:12.5px; color:var(--muted); line-height:1.3}
+.gs .t span{display:block; font-size:11.5px; color:var(--faint)}
+.gs.done .b{background:var(--ok-bg); border-color:var(--ok-line); color:var(--ok-text)}
+.gs.done .t{color:var(--text-2)}
+.gs.next{background:var(--action-bg)}
+.gs.next .b{border-color:var(--action); color:var(--action)}
+.gs.next .t{color:var(--text)}
+.gs .go{height:26px; padding:0 10px; font-size:12px}
+.guide-foot{display:flex; justify-content:space-between; align-items:center; padding:4px 14px 12px; font-size:11.5px; color:var(--faint)}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1200px){
+  .g-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g-2{grid-template-columns:minmax(0,1fr)}
+  .meta{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:980px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .sidebar{position:static; height:auto; flex-direction:row; align-items:center; gap:12px; padding:10px; overflow-x:auto}
+  .brand span,.nav-label,.side-foot,.nav-item .n-sub{display:none}
+  .nav{flex-direction:row}
+  .nav-item{width:auto; white-space:nowrap}
+  .crumb{display:none}
+  .panes{grid-template-columns:minmax(0,1fr)}
+  .flow{grid-template-columns:minmax(0,1fr)}
+  .flow-arrow{transform:rotate(90deg)}
+  .guide{width:calc(100% - 32px)}
+}
+@media (max-width:640px){
+  .g-kpi{grid-template-columns:minmax(0,1fr)}
+  .meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ccy-grid{grid-template-columns:minmax(0,1fr)}
+  .hero{padding:20px}
+  .top-search .kbd,.top-right .pill{display:none}
+}
+
+/* ---------- Identity layer: bridge, gate chain, routing, events ---------- */
+.bridge{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; padding:16px}
+.bstep{border:1px solid var(--line); border-radius:var(--r-md); background:var(--card-2); padding:12px; display:flex; flex-direction:column; gap:6px; position:relative; min-width:0}
+.bstep.hub{border-color:var(--ok-line); background:var(--ok-bg)}
+.bstep .n{font:500 11px var(--mono); color:var(--faint)}
+.bstep h3{font-size:13px}
+.bstep p{font-size:12px; color:var(--muted)}
+.bstep .ids{display:flex; flex-wrap:wrap; gap:4px}
+.bstep:not(:last-child)::after{content:""; position:absolute; right:-7px; top:50%; width:4px; height:4px; border-top:1.5px solid var(--faint); border-right:1.5px solid var(--faint); transform:translateY(-50%) rotate(45deg)}
+details.tech{border-top:1px solid var(--line)}
+details.tech > summary,.tech-card > summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; padding:12px 16px; font-size:12.5px; color:var(--muted)}
+details.tech > summary::-webkit-details-marker,.tech-card > summary::-webkit-details-marker{display:none}
+details.tech > summary .ic,.tech-card > summary .ic{transition:transform .15s}
+details.tech[open] > summary .ic,.tech-card[open] > summary .ic{transform:rotate(90deg)}
+.tech-card > summary b{color:var(--text); font-weight:600; font-size:13.5px}
+.tech-body{padding:0 16px 16px; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+.tech-item{border:1px solid var(--line); border-radius:var(--r-md); background:var(--card-2); padding:12px; min-width:0}
+.tech-item h4{margin:0 0 6px; font-size:12px; font-weight:600; color:var(--text-2)}
+.tech-item p{font-size:12px; color:var(--muted); line-height:1.5}
+.tech-item p.mono{color:var(--text-2); word-break:break-all}
+pre.snip{margin:8px 0 0; font:11.5px/1.6 var(--mono); color:var(--text-2); background:var(--code); border:1px solid var(--line); border-radius:8px; padding:8px 10px; overflow-x:auto; white-space:pre}
+.chain{padding:10px 16px 14px; display:flex; flex-direction:column}
+.chain-row{display:grid; grid-template-columns:22px 150px minmax(0,1fr); gap:12px; align-items:center; padding:6px 0; position:relative}
+.chain-row:not(:last-child)::after{content:""; position:absolute; left:10px; top:28px; bottom:-6px; width:1.5px; background:var(--line-2)}
+.chain-row .ci{width:22px; height:22px; border-radius:50%; display:grid; place-items:center; background:var(--card-3); color:var(--faint); position:relative; z-index:1}
+.chain-row.ok .ci{background:var(--ok-bg); color:var(--ok-text)}
+.chain-row.fail .ci{background:var(--bad-bg); color:var(--bad-text)}
+.chain-row .l{font-size:12px; color:var(--muted)}
+.chain-row .v{font-size:13px; color:var(--text); display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-width:0}
+.chain-row.fail .v{color:var(--bad-text); font-weight:600}
+.chain-row.skip{opacity:.42}
+.chain-row.final .v{font-weight:600}
+.chain-row.final.ok .v{color:var(--ok-text)}
+.prod{display:inline-flex; align-items:center; gap:4px; font:500 11.5px var(--mono); padding:1px 8px; border-radius:999px; border:1px solid var(--line-2); color:var(--text-2)}
+.prod.on{background:var(--ok-bg); border-color:var(--ok-line); color:var(--ok-text)}
+.prod.off{background:var(--warn-bg); border-color:var(--warn-line); color:var(--warn-text)}
+.prod.no{color:var(--faint)}
+.prod.req{outline:1.5px solid var(--text-2); outline-offset:1px}
+.route-grid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; padding:16px}
+.rrow{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; flex-wrap:wrap}
+.rrow:last-child{border-bottom:0}
+.rrow .r{margin-left:auto}
+.rrow .sub{flex-basis:100%; font-size:12px; color:var(--faint); margin-top:-4px}
+.ev-actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:0 16px 12px; font-size:12.5px}
+.ev{display:grid; grid-template-columns:100px 230px minmax(0,1fr) auto; gap:12px; padding:9px 16px; border-top:1px solid var(--line); font-size:12.5px; align-items:center}
+.ev .topic{font:500 11.5px var(--mono); color:var(--ok-text)}
+.seg-group{display:flex; flex-direction:column; gap:4px; align-items:flex-end}
+.seg-label{font-size:11px; color:var(--faint)}
+@media (max-width:1200px){ .bridge{grid-template-columns:repeat(3,minmax(0,1fr))} .route-grid,.tech-body{grid-template-columns:minmax(0,1fr)} .ev{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:640px){ .bridge{grid-template-columns:minmax(0,1fr)} .bstep::after{display:none} .chain-row{grid-template-columns:22px minmax(0,1fr)} .chain-row .v{grid-column:2} .seg-group{align-items:flex-start} }
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important; transition:none!important}
+}
+</style>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="8.5" cy="12" r="5"/><circle cx="15.5" cy="12" r="5"/></svg></div>
+      <div><b>Nexus Bridge</b><span>One merchant, one identity</span></div>
+    </div>
+    <nav class="nav" id="nav" aria-label="Main"></nav>
+    <div class="side-foot">
+      <div class="sources">
+        <div class="sources-head"><span>Source systems</span><span>Simulated</span></div>
+        <div class="src-row"><span class="dot"></span>Passport<span class="mono">synced</span></div>
+        <div class="src-row"><span class="dot"></span>MXM<span class="mono">synced</span></div>
+        <div class="src-row"><span class="dot"></span>CPX<span class="mono">synced</span></div>
+        <div class="src-row"><span class="dot"></span>ACH<span class="mono">synced</span></div>
+      </div>
+      <div class="sim-note"><span id="ic-sim"></span><span>All data is fictional and simulated. No real SES, MXM, CPX, Passport, ACH or Unified Transaction API is connected.</span></div>
+      <button class="btn btn-sm" data-action="reset" id="reset-side"></button>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar-wrap">
+      <header class="topbar">
+        <div class="crumb" id="crumb"></div>
+        <div class="top-search">
+          <label class="search" for="q-top">
+            <span id="ic-top"></span>
+            <input id="q-top" type="text" autocomplete="off" spellcheck="false" placeholder="Search by MXM, CPX, Passport ID, or Business Name...">
+            <span class="kbd">⌘K</span>
+          </label>
+          <div class="dropdown" id="dd-top" hidden></div>
+        </div>
+        <div class="top-right">
+          <span class="pill warn sm">Simulated data</span>
+          <button class="btn btn-ghost btn-icon" data-action="theme" id="theme-btn" aria-label="Switch light or dark"></button>
+          <div class="avatar" title="Support Ops reviewer">SO</div>
+        </div>
+      </header>
+    </div>
+
+    <section class="view" id="view-resolve"></section>
+    <section class="view" id="view-simulator" hidden></section>
+    <section class="view" id="view-exceptions" hidden></section>
+    <section class="view" id="view-activity" hidden></section>
+  </main>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden></aside>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<aside class="guide" id="guide"></aside>
+
+<script>
+/* =====================================================================
+   Nexus Bridge prototype. All data below is fictional and simulated.
+   ===================================================================== */
+
+/* ============ Icons ============ */
+const P = {
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  resolve:'<circle cx="12" cy="12" r="2.6"/><circle cx="5" cy="5" r="1.8"/><circle cx="19" cy="5" r="1.8"/><circle cx="5" cy="19" r="1.8"/><circle cx="19" cy="19" r="1.8"/><path d="m6.4 6.4 3.7 3.7M17.6 6.4l-3.7 3.7M6.4 17.6l3.7-3.7M17.6 17.6l-3.7-3.7"/>',
+  bolt:'<path d="M13 3 4.5 13.5H11L10 21l8.5-10.5H12z"/>',
+  alert:'<path d="M10.3 4.2 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4M12 17h.01"/>',
+  audit:'<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>',
+  copy:'<rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
+  check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  chev:'<path d="m9 6 6 6-6 6"/>',
+  note:'<path d="M5 4h10l4 4v12H5z"/><path d="M9 12h6M9 16h4"/>',
+  shield:'<path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  wallet:'<rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M3 10h18M16 15h2"/>',
+  list:'<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M8 4v16"/>',
+  play:'<path d="M7 5.5v13l11-6.5z"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  link:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  up:'<path d="M12 19V5M6 11l6-6 6 6"/>',
+  ban:'<circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/>',
+  reset:'<path d="M4 4v6h6"/><path d="M5.5 15a7 7 0 1 0 1.2-7.3L4 10"/>',
+  info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>',
+  tree:'<path d="M5 4v16M5 8h6M5 16h6"/><rect x="11" y="5" width="8" height="6" rx="1.5"/><rect x="11" y="13" width="8" height="6" rx="1.5"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>'
+};
+const ic = (n, s = 16, w = 1.8) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+
+/* ============ Helpers ============ */
+const $ = s => document.querySelector(s);
+const fmtCache = {};
+const money = (n, ccy = 'USD') => (fmtCache[ccy] ||= new Intl.NumberFormat('en-US', { style: 'currency', currency: ccy })).format(n);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+const initials = n => n.replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+const nowStr = () => { const d = new Date(); return `Sep 28, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const sysOf = id => id.split('-')[0];
+
+/* ============ Seed data (fictional) ============ */
+function seed() {
+  const T = (id, sys, ts, sl, dl, sc, dc, amount, ccy, status, settle) => ({ id, sys, ts, src_legacy: sl, dst_legacy: dl, src_can: sc, dst_can: dc, amount, ccy, status, settle });
+  return {
+    view: 'resolve',
+    resolve: { mode: 'overview' },
+    ledgerF: { sys: 'All', status: 'All', settle: 'All' },
+    treeOpen: {}, treeDefault: null,
+    sim: { scenario: 'clean', status: 'idle', stage: -1, result: null },
+    queueTab: 'open',
+    openEx: null, confirm: null,
+    guideCollapsed: false, guideTouched: false,
+    done: {}, txnSeq: 45001, regVersion: 1,
+
+    /* Shared Entity System (SES) — canonical entities */
+    entities: {
+      'SES-8800-ACMG': { id: 'SES-8800-ACMG', name: 'Acme Retail Group Inc', type: 'Parent entity', status: 'Active', parent: null, taxId: '••-•••4400', mcc: 'Holding company', region: 'US-East', since: 'Mar 02, 2019', tenant: 'TNT-NA-01', subaccounts: [], volume: {} },
+      'SES-8842-ACME': { id: 'SES-8842-ACME', name: 'Acme Retail LLC', type: 'Operating entity', status: 'Active', parent: 'SES-8800-ACMG', taxId: '••-•••4422', mcc: '5311 · Department stores', region: 'US-East', since: 'Mar 14, 2019', tenant: 'TNT-NA-01',
+        subaccounts: [
+          { id: 'SA-8842-01', name: 'Operating', ccy: 'USD', avail: 184220.14, pending: 3410.00, legacy: 'MXM-77329', instruments: [] },
+          { id: 'SA-8842-02', name: 'Card settlement', ccy: 'USD', avail: 92410.55, pending: 18240.33, legacy: 'CPX-0991', instruments: [{ id: 'PI-2044', label: 'Card acceptance MID ••2044', kind: 'Merchant ID' }] },
+          { id: 'SA-8842-03', name: 'Payout reserve', ccy: 'USD', avail: 40000.00, pending: 12880.00, legacy: 'ACH-55120', instruments: [{ id: 'PI-7781', label: 'Chase business checking ••7781', kind: 'Bank account' }] },
+          { id: 'SA-8842-04', name: 'Cross-border settlement', ccy: 'CAD', avail: 58300.00, pending: 9115.02, legacy: 'CPX-0991', instruments: [{ id: 'PI-6630', label: 'RBC business account ••6630', kind: 'Bank account' }] }
+        ], volume: { USD: 1243800.00, CAD: 86450.00 } },
+      'SES-8847-ACCA': { id: 'SES-8847-ACCA', name: 'Acme Retail Canada Ltd', type: 'Operating entity', status: 'Active', parent: 'SES-8800-ACMG', taxId: 'BN ••••7702', mcc: '5311 · Department stores', region: 'CA-Central', since: 'Jun 10, 2021', tenant: 'TNT-NA-01',
+        subaccounts: [{ id: 'SA-8847-01', name: 'Operating', ccy: 'CAD', avail: 73120.40, pending: 0, legacy: 'MXM-77402', instruments: [{ id: 'PI-9105', label: 'TD business account ••9105', kind: 'Bank account' }] }], volume: { CAD: 312400.00 } },
+      'SES-9001-BETA': { id: 'SES-9001-BETA', name: 'Beta Logistics Inc', type: 'Operating entity', status: 'Active', parent: null, taxId: '••-•••7310', mcc: '4214 · Freight & trucking', region: 'US-Central', since: 'Aug 21, 2020', tenant: 'TNT-NA-01',
+        subaccounts: [
+          { id: 'SA-9001-01', name: 'Operating', ccy: 'USD', avail: 96310.00, pending: 12880.00, legacy: 'MXM-80114', instruments: [] },
+          { id: 'SA-9001-02', name: 'Card settlement', ccy: 'USD', avail: 51207.88, pending: 0, legacy: 'CPX-7710', instruments: [{ id: 'PI-3317', label: 'Card acceptance MID ••3317', kind: 'Merchant ID' }] },
+          { id: 'SA-9001-03', name: 'Payouts', ccy: 'USD', avail: 15000.00, pending: 0, legacy: 'ACH-60233', instruments: [{ id: 'PI-2209', label: 'Citi business checking ••2209', kind: 'Bank account' }] }
+        ], volume: { USD: 612000.00 } },
+      'SES-6120-BTRN': { id: 'SES-6120-BTRN', name: 'Beta Transport Holdings LLC', type: 'Operating entity', status: 'Active', parent: null, taxId: '••-•••5118', mcc: '4213 · Long-distance trucking', region: 'US-Central', since: 'Jan 15, 2023', tenant: 'TNT-NA-01',
+        subaccounts: [{ id: 'SA-6120-01', name: 'Operating', ccy: 'USD', avail: 28400.00, pending: 0, legacy: 'MXM-61200', instruments: [{ id: 'PI-5530', label: 'Citi business checking ••5530', kind: 'Bank account' }] }], volume: { USD: 140200.00 } },
+      'SES-7310-NWND': { id: 'SES-7310-NWND', name: 'Northwind Café LLC', type: 'Operating entity', status: 'Active', parent: null, taxId: '••-•••1188', mcc: '5812 · Restaurants', region: 'US-West', since: 'Feb 03, 2022', tenant: 'TNT-NA-02',
+        subaccounts: [
+          { id: 'SA-7310-01', name: 'Operating', ccy: 'USD', avail: 21840.62, pending: 0, legacy: 'MXM-51208', instruments: [] },
+          { id: 'SA-7310-02', name: 'Card settlement', ccy: 'USD', avail: 6390.14, pending: 1840.20, legacy: 'CPX-3380', instruments: [{ id: 'PI-4410', label: 'US Bank business checking ••4410', kind: 'Bank account' }] }
+        ], volume: { USD: 88100.00 } },
+      'SES-0100-CNET': { id: 'SES-0100-CNET', name: 'Card Network Clearing', type: 'Network clearing entity', status: 'Active', parent: null, taxId: '—', mcc: 'Card network settlement', region: 'Global', since: 'Jan 01, 2019', tenant: 'TNT-NA-01', subaccounts: [], volume: {} }
+    },
+
+    /* Nexus Registry — legacy ID → canonical ID mappings */
+    registry: [
+      { legacy: 'Passport-A1B0', canonical: 'SES-8800-ACMG', role: 'KYC group identity', rule: 'tax_id + legal_name', since: 'Mar 02, 2019' },
+      { legacy: 'MXM-77329', canonical: 'SES-8842-ACME', role: 'Merchant account', rule: 'exact_key', since: 'Mar 14, 2019' },
+      { legacy: 'CPX-0991', canonical: 'SES-8842-ACME', role: 'Card processing', rule: 'tax_id + legal_name', since: 'Apr 02, 2019' },
+      { legacy: 'Passport-A1B2', canonical: 'SES-8842-ACME', role: 'KYC identity', rule: 'tax_id + owner', since: 'Mar 14, 2019' },
+      { legacy: 'ACH-55120', canonical: 'SES-8842-ACME', role: 'Bank payouts', rule: 'bank_acct + tax_id', since: 'Jan 09, 2020' },
+      { legacy: 'MXM-77402', canonical: 'SES-8847-ACCA', role: 'Merchant account', rule: 'exact_key', since: 'Jun 10, 2021' },
+      { legacy: 'CPX-1204', canonical: 'SES-8847-ACCA', role: 'Card processing', rule: 'tax_id + legal_name', since: 'Jun 18, 2021' },
+      { legacy: 'MXM-80114', canonical: 'SES-9001-BETA', role: 'Merchant account', rule: 'exact_key', since: 'Aug 21, 2020' },
+      { legacy: 'CPX-7710', canonical: 'SES-9001-BETA', role: 'Card processing', rule: 'tax_id + legal_name', since: 'Aug 21, 2020' },
+      { legacy: 'Passport-C7D8', canonical: 'SES-9001-BETA', role: 'KYC identity', rule: 'tax_id + owner', since: 'Aug 20, 2020' },
+      { legacy: 'ACH-60233', canonical: 'SES-9001-BETA', role: 'Bank payouts', rule: 'bank_acct + tax_id', since: 'Sep 02, 2020' },
+      { legacy: 'ACH-61877', canonical: 'SES-9001-BETA', role: 'Bank payouts', rule: 'bank_acct (bulk import)', since: 'Sep 27, 2026' },
+      { legacy: 'MXM-61200', canonical: 'SES-6120-BTRN', role: 'Merchant account', rule: 'exact_key', since: 'Jan 15, 2023' },
+      { legacy: 'ACH-61800', canonical: 'SES-6120-BTRN', role: 'Bank payouts', rule: 'bank_acct + tax_id', since: 'Jan 20, 2023' },
+      { legacy: 'ACH-61877', canonical: 'SES-6120-BTRN', role: 'Bank payouts', rule: 'bank_acct (bulk import)', since: 'Sep 27, 2026' },
+      { legacy: 'MXM-51208', canonical: 'SES-7310-NWND', role: 'Merchant account', rule: 'exact_key', since: 'Feb 03, 2022' },
+      { legacy: 'Passport-N0R7', canonical: 'SES-7310-NWND', role: 'KYC identity', rule: 'tax_id + owner', since: 'Feb 02, 2022' },
+      { legacy: 'CPX-3380', canonical: 'SES-7310-NWND', role: 'Card processing', rule: 'tax_id + legal_name', since: 'Feb 03, 2022' },
+      { legacy: 'CPX-9000', canonical: 'SES-0100-CNET', role: 'Network clearing account', rule: 'exact_key', since: 'Jan 01, 2019' }
+    ],
+
+    /* Exception queue */
+    exceptions: [
+      { id: 'EX-3021', type: 'conflict', received: 'Sep 28, 08:12', legacy: 'MXM-99110', name: 'Acme Retail L.L.C.', candidates: ['SES-8842-ACME'], status: 'UNRESOLVED', newId: 'SES-8843-ACML', similarity: 82,
+        reason: 'Tax ID conflicts with SES-8842-ACME (ends 4421 vs 4422)',
+        fields: [
+          ['Legal name', 'Acme Retail L.L.C.', ['Acme Retail LLC'], 'similar'],
+          ['Tax ID (EIN)', '••-•••4421', ['••-•••4422'], 'conflict'],
+          ['Registered address', '410 Market Street, San Francisco, CA', ['410 Market St, San Francisco, CA'], 'similar'],
+          ['Settlement bank', 'Wells Fargo ••0934', ['Chase ••7781'], 'conflict'],
+          ['Beneficial owner', 'D. Ramirez', ['D. Ramirez'], 'match'],
+          ['Source', 'MXM self-serve signup · Sep 2026', ['Passport KYC · 2019'], 'info']
+        ],
+        evidence: [['Exactly one candidate entity', true, 'SES-8842-ACME'], ['Tax ID matches exactly', false, '4421 vs 4422'], ['Settlement bank matches exactly', false, 'Wells Fargo vs Chase']],
+        note: 'Business names match (fuzzy logic), but Incoming Tax ID ends in 4421, while System Tax ID ends in 4422. Auto-merge prevented.',
+        create: { ccy: 'USD', bank: 'Wells Fargo business checking ••0934', role: 'Merchant account', taxId: '••-•••4421' }, heldTxns: [] },
+      { id: 'EX-3019', type: 'ambiguous', received: 'Sep 27, 17:40', legacy: 'ACH-61877', name: 'Beta Logistics', candidates: ['SES-9001-BETA', 'SES-6120-BTRN'], status: 'UNRESOLVED', newId: 'SES-9002-BTLC', similarity: 71,
+        reason: 'Registry maps ACH-61877 to 2 entities through a shared bank account (••5530)',
+        fields: [
+          ['Legal name', 'Beta Logistics', ['Beta Logistics Inc', 'Beta Transport Holdings LLC'], 'similar'],
+          ['Tax ID (EIN)', 'Not provided', ['••-•••7310', '••-•••5118'], 'missing'],
+          ['Settlement bank', 'Citi ••5530', ['Citi ••2209', 'Citi ••5530'], 'split'],
+          ['Registered address', '1200 Canal St, Chicago, IL', ['88 Wacker Dr, Chicago, IL', '1200 Canal St, Chicago, IL'], 'split'],
+          ['Source', 'ACH originator file · Sep 2026', ['Passport KYC · 2020', 'Passport KYC · 2023'], 'info']
+        ],
+        evidence: [['Exactly one candidate entity', false, '2 entities match'], ['Tax ID matches exactly', false, 'not provided'], ['Settlement bank matches exactly', true, 'SES-6120-BTRN only']],
+        note: 'The name resembles Beta Logistics Inc, but the bank account and address belong to Beta Transport Holdings LLC. The registry holds both mappings, so Nexus Bridge will not pick one.',
+        create: { ccy: 'USD', bank: 'Citi business checking ••5530', role: 'Bank payouts', taxId: 'Not provided' }, heldTxns: [] },
+      { id: 'EX-3016', type: 'unmapped', received: 'Sep 27, 11:05', legacy: 'CPX-5521', name: 'Northwind Café LLC', candidates: ['SES-7310-NWND'], status: 'UNRESOLVED', newId: 'SES-7311-NWCF', similarity: 97,
+        reason: 'No registry entry for CPX-5521',
+        fields: [
+          ['Legal name', 'Northwind Café LLC', ['Northwind Café LLC'], 'match'],
+          ['Tax ID (EIN)', '••-•••1188', ['••-•••1188'], 'match'],
+          ['Settlement bank', 'US Bank ••4410', ['US Bank ••4410'], 'match'],
+          ['Registered address', '19 Pike Pl, Seattle, WA', ['19 Pike Pl, Seattle, WA'], 'match'],
+          ['Source', 'CPX partner onboarding · Sep 2026', ['Passport KYC · 2022'], 'info']
+        ],
+        evidence: [['Exactly one candidate entity', true, 'SES-7310-NWND'], ['Tax ID matches exactly', true, '••1188'], ['Settlement bank matches exactly', true, 'US Bank ••4410']],
+        note: 'This CPX account was opened after the last registry sync, so no mapping exists yet. Its Tax ID and settlement bank match SES-7310-NWND exactly, which satisfies the tax_id + bank_acct rule. New mappings still need a reviewer to confirm them.',
+        create: { ccy: 'USD', bank: 'US Bank business checking ••4410', role: 'Card processing', taxId: '••-•••1188' }, heldTxns: [] },
+      { id: 'EX-3014', type: 'unmapped', received: 'Sep 26, 15:22', legacy: 'Passport-Z9Q1', name: 'Harbor Street Books', candidates: [], status: 'UNRESOLVED', newId: 'SES-7420-HSBK', similarity: null,
+        reason: 'No registry entry and no existing SES entity with matching keys',
+        fields: [
+          ['Legal name', 'Harbor Street Books', [], 'info'],
+          ['Tax ID (EIN)', '••-•••6071', [], 'info'],
+          ['Settlement bank', 'Bangor Savings ••1180', [], 'info'],
+          ['Registered address', '52 Harbor St, Portland, ME', [], 'info'],
+          ['Source', 'Passport KYC · Sep 2026', [], 'info']
+        ],
+        evidence: [['Exactly one candidate entity', false, 'no existing entity matches']],
+        note: 'No SES entity shares a Tax ID, bank account or name with this record. It is most likely a new merchant and needs its own canonical ID.',
+        create: { ccy: 'USD', bank: 'Bangor Savings business checking ••1180', role: 'KYC identity', taxId: '••-•••6071' }, heldTxns: [] }
+    ],
+    closed: [],
+
+    /* Unified transaction store */
+    txns: [
+      T('TXN-20260927-44810', 'ACH', 'Sep 27, 09:41', 'ACH-55120', 'ACH-60233', 'SES-8842-ACME', 'SES-9001-BETA', 12880.00, 'USD', 'Pending', 'Pending'),
+      T('TXN-20260927-44652', 'CPX', 'Sep 27, 08:03', 'CPX-9000', 'CPX-0991', 'SES-0100-CNET', 'SES-8842-ACME', 18240.33, 'USD', 'Completed', 'Pending'),
+      T('TXN-20260927-44501', 'CPX', 'Sep 27, 07:30', 'CPX-9000', 'CPX-3380', 'SES-0100-CNET', 'SES-7310-NWND', 1840.20, 'USD', 'Completed', 'Pending'),
+      T('TXN-20260926-44102', 'CPX', 'Sep 26, 18:30', 'CPX-9000', 'CPX-7710', 'SES-0100-CNET', 'SES-9001-BETA', 7730.10, 'USD', 'Completed', 'Settled'),
+      T('TXN-20260926-43981', 'MXM', 'Sep 26, 16:22', 'MXM-77329', 'MXM-77402', 'SES-8842-ACME', 'SES-8847-ACCA', 25000.00, 'CAD', 'Completed', 'Settled'),
+      T('TXN-20260926-43507', 'CPX', 'Sep 26, 11:10', 'CPX-9000', 'CPX-0991', 'SES-0100-CNET', 'SES-8842-ACME', 9115.02, 'CAD', 'Completed', 'Pending'),
+      T('TXN-20260926-43380', 'ACH', 'Sep 26, 09:12', 'ACH-60233', 'ACH-60233', 'SES-9001-BETA', 'SES-9001-BETA', 20000.00, 'USD', 'Completed', 'Settled'),
+      T('TXN-20260926-43210', 'CPX', 'Sep 26, 07:30', 'CPX-9000', 'CPX-3380', 'SES-0100-CNET', 'SES-7310-NWND', 2112.75, 'USD', 'Completed', 'Settled'),
+      T('TXN-20260925-42830', 'ACH', 'Sep 25, 19:47', 'ACH-55120', 'ACH-55120', 'SES-8842-ACME', 'SES-8842-ACME', 25000.00, 'USD', 'Completed', 'Settled'),
+      T('TXN-20260925-42620', 'ACH', 'Sep 25, 14:10', 'ACH-61800', 'ACH-61800', 'SES-6120-BTRN', 'SES-6120-BTRN', 8200.00, 'USD', 'Completed', 'Settled'),
+      T('TXN-20260925-42211', 'CPX', 'Sep 25, 09:15', 'CPX-0991', 'CPX-9000', 'SES-8842-ACME', 'SES-0100-CNET', 89.99, 'USD', 'Reversed', 'Returned'),
+      T('TXN-20260924-41102', 'ACH', 'Sep 24, 13:30', 'ACH-55120', 'ACH-60233', 'SES-8842-ACME', 'SES-9001-BETA', 4500.00, 'USD', 'Failed', 'Unsettled'),
+      T('TXN-20260923-40555', 'CPX', 'Sep 23, 07:30', 'CPX-9000', 'CPX-0991', 'SES-0100-CNET', 'SES-8842-ACME', 21407.80, 'USD', 'Completed', 'Settled'),
+      T('TXN-20260923-40410', 'MXM', 'Sep 23, 10:05', 'MXM-77329', 'MXM-80114', 'SES-8842-ACME', 'SES-9001-BETA', 1960.00, 'USD', 'Completed', 'Settled')
+    ],
+
+    /* Activity log */
+    audit: [
+      { t: 'Sep 28, 08:12', actor: 'Nexus Bridge', kind: 'sys', ev: 'Routed to review', ent: 'MXM-99110', detail: 'Tax ID conflicts with SES-8842-ACME. Created EX-3021. Nothing was merged.' },
+      { t: 'Sep 27, 17:40', actor: 'Nexus Bridge', kind: 'sys', ev: 'Routed to review', ent: 'ACH-61877', detail: 'Registry holds 2 mappings for this ID. Created EX-3019. No entity was selected.' },
+      { t: 'Sep 27, 11:05', actor: 'Nexus Bridge', kind: 'sys', ev: 'Routed to review', ent: 'CPX-5521', detail: 'No registry entry. Created EX-3016. No canonical ID was invented.' },
+      { t: 'Sep 27, 09:41', actor: 'Nexus Bridge', kind: 'sys', ev: 'Identity stamped', ent: 'TXN-20260927-44810', detail: 'SES-8842-ACME → SES-9001-BETA · exact unique mapping' },
+      { t: 'Sep 26, 15:22', actor: 'Nexus Bridge', kind: 'sys', ev: 'Routed to review', ent: 'Passport-Z9Q1', detail: 'No registry entry and no candidate entity. Created EX-3014.' }
+    ]
+  };
+}
+
+/* ============ Identity layer seed: tenancy, entitlements, provider IDs, SES events ============ */
+function extendSeed(st) {
+  const prod = (ach, card, payout) => ({ ACH: ach, Card: card, Payout: payout });
+  const meta = {
+    'SES-8800-ACMG': { products: {}, providers: {}, location: null },
+    'SES-8842-ACME': { products: prod('ACTIVE', 'ACTIVE', 'ACTIVE'), providers: { mxm: 'MXM-77329', passport: 'PBA-8842-01' }, location: 'LOC-8842-01' },
+    'SES-8847-ACCA': { products: prod('ACTIVE', 'ACTIVE', 'PENDING'), providers: { mxm: 'MXM-77402', passport: null }, location: 'LOC-8847-01', gateNote: 'Canadian payout onboarding is incomplete.' },
+    'SES-9001-BETA': { products: prod('ACTIVE', 'ACTIVE', 'ACTIVE'), providers: { mxm: 'MXM-80114', passport: 'PBA-9001-01' }, location: 'LOC-9001-01' },
+    'SES-6120-BTRN': { products: prod('ACTIVE', 'NOT_ENROLLED', 'ACTIVE'), providers: { mxm: 'MXM-61200', passport: 'PBA-6120-01' }, location: 'LOC-6120-01' },
+    'SES-7310-NWND': { products: prod('ACTIVE', 'ACTIVE', 'UNDER_REVIEW'), providers: { mxm: 'MXM-51208', passport: 'PBA-7310-01' }, location: 'LOC-7310-01', gateNote: 'Payout underwriting review is in progress.' },
+    'SES-0100-CNET': { products: { Card: 'ACTIVE' }, providers: {}, location: null }
+  };
+  Object.entries(meta).forEach(([id, m]) => Object.assign(st.entities[id], m));
+  st.entities['SES-10294'] = { id: 'SES-10294', name: 'Acme Coffee LLC', type: 'Operating entity', status: 'Active', parent: null, taxId: '••-•••9034', mcc: '5814 · Coffee shops', region: 'US-West', since: 'Apr 11, 2024', tenant: 'TNT-NA-03',
+    subaccounts: [
+      { id: 'SA-10294-01', name: 'Card settlement', ccy: 'USD', avail: 12480.40, pending: 0, legacy: 'MXM-84721', instruments: [{ id: 'PI-8472', label: 'Card acceptance MID ••8472', kind: 'Merchant ID' }] },
+      { id: 'SA-10294-02', name: 'Operating', ccy: 'USD', avail: 30210.00, pending: 0, legacy: 'Passport-K3F9', instruments: [{ id: 'PI-3301', label: 'Chase business checking ••3301', kind: 'Bank account' }] }
+    ], volume: { USD: 214500.00 },
+    products: prod('ACTIVE', 'ACTIVE', 'ACTIVE'), providers: { mxm: 'MXM-84721', passport: 'PBA-10294-01' }, location: 'LOC-10294-01' };
+  st.entities['SES-10311'] = { id: 'SES-10311', name: 'Brightline Bakery Co', type: 'Operating entity', status: 'Pending onboarding', parent: null, taxId: '••-•••2267', mcc: '5462 · Bakeries', region: 'US-West', since: 'Sep 22, 2026', tenant: 'TNT-NA-03',
+    subaccounts: [{ id: 'SA-10311-01', name: 'Operating', ccy: 'USD', avail: 8400.00, pending: 0, legacy: 'MXM-84990', instruments: [] }], volume: { USD: 0 },
+    products: prod('PENDING', 'PENDING', 'PENDING'), providers: { mxm: 'MXM-84990', passport: null }, location: 'LOC-10311-01',
+    gateNote: 'Onboarding incomplete: beneficial owner ID is missing and underwriting review is open.' };
+  st.registry.push(
+    { legacy: 'MXM-84721', canonical: 'SES-10294', role: 'Merchant account', rule: 'exact_key', since: 'Apr 11, 2024' },
+    { legacy: 'Passport-K3F9', canonical: 'SES-10294', role: 'KYC identity', rule: 'tax_id + owner', since: 'Apr 10, 2024' },
+    { legacy: 'MXM-84990', canonical: 'SES-10311', role: 'Merchant account', rule: 'exact_key', since: 'Sep 22, 2026' });
+  const tx = (id, sys, ts, sl, dl, sc, dc, amount, status, settle) => ({ id, sys, ts, src_legacy: sl, dst_legacy: dl, src_can: sc, dst_can: dc, amount, ccy: 'USD', status, settle });
+  st.txns.push(
+    tx('TXN-20260927-44580', 'MXM', 'Sep 27, 18:05', 'CPX-9000', 'MXM-84721', 'SES-0100-CNET', 'SES-10294', 2915.60, 'Completed', 'Settled'),
+    tx('TXN-20260926-43655', 'MXM', 'Sep 26, 13:40', 'MXM-84721', 'CPX-9000', 'SES-10294', 'SES-0100-CNET', 42.50, 'Completed', 'Settled'));
+  st.events = [
+    { t: 'Sep 28, 09:02', topic: 'ses.risk.status_changed', ent: 'SES-7310-NWND', detail: 'Payout → UNDER_REVIEW (underwriting)' },
+    { t: 'Sep 28, 08:47', topic: 'ses.onboarding.status_changed', ent: 'SES-10311', detail: 'Brightline Bakery Co → PENDING · beneficial owner ID missing' },
+    { t: 'Sep 28, 07:58', topic: 'ses.entitlement.changed', ent: 'SES-10294', detail: 'ACH, Card, Payout → ACTIVE' },
+    { t: 'Sep 28, 07:55', topic: 'ses.entity.updated', ent: 'SES-10294', detail: 'Acme Coffee LLC · KYB verified' }
+  ];
+  st.cacheVersion = 12;
+  st.keepOpen = {};
+  return st;
+}
+const seedBase = seed;
+seed = function () { return extendSeed(seedBase()); };
+
+let S = seed();
+
+/* ============ Nexus Registry: resolution rules ============ */
+/* Rule 1 exact unique mapping · Rule 2 missing · Rule 3 conflict · Rule 4 ambiguous */
+function mappingsFor(id) { const n = norm(id); return S.registry.filter(r => norm(r.legacy) === n); }
+function resolveId(raw) {
+  const n = norm(raw);
+  const ent = Object.values(S.entities).find(e => norm(e.id) === n);
+  if (ent) return { status: 'resolved', canonical: ent.id, via: ent.id, rule: 'canonical_id' };
+  const maps = mappingsFor(raw);
+  const ex = S.exceptions.find(x => norm(x.legacy) === n);
+  if (maps.length === 1 && !ex) return { status: 'resolved', canonical: maps[0].canonical, via: maps[0].legacy, rule: maps[0].rule, mapping: maps[0] };
+  if (maps.length > 1) return { status: 'ambiguous', via: maps[0].legacy, candidates: maps.map(m => m.canonical), ex };
+  if (ex && ex.type === 'conflict') return { status: 'conflict', via: ex.legacy, ex };
+  const closed = S.closed.find(x => norm(x.legacy) === n);
+  return { status: 'not_found', via: raw, ex, closed };
+}
+const linksOf = id => S.registry.filter(r => r.canonical === id && mappingsFor(r.legacy).length === 1);
+const disputedOf = id => S.registry.filter(r => r.canonical === id && mappingsFor(r.legacy).length > 1);
+const childrenOf = id => Object.values(S.entities).filter(e => e.parent === id);
+const txnsFor = id => S.txns.filter(t => t.src_can === id || t.dst_can === id);
+const openCount = () => S.exceptions.length;
+const describe = r => ({
+  resolved: `resolves to ${r.canonical}`,
+  ambiguous: `maps to ${r.candidates?.length} entities`,
+  conflict: `has a conflicting identity (${r.ex?.id})`,
+  not_found: 'has no registry mapping'
+}[r.status]);
+
+/* ============ Routing ============ */
+const VIEWS = ['resolve', 'simulator', 'exceptions', 'activity'];
+function go(view) {
+  S.view = view;
+  try { history.replaceState(null, '', '#' + view); } catch (e) {}
+  render();
+  window.scrollTo({ top: 0 });
+}
+window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if (VIEWS.includes(v) && v !== S.view) go(v); });
+
+/* ============ Nav ============ */
+function renderNav() {
+  const n = openCount();
+  const items = [
+    ['resolve', 'resolve', 'Unified Search', 'Entity 360° view'],
+    ['simulator', 'bolt', 'Stamping Simulator', 'Live payload injection'],
+    ['exceptions', 'alert', 'Exception Queue', 'Manual resolution', `<span class="count ${n ? '' : 'zero'}">${n}</span>`]
+  ];
+  $('#nav').innerHTML = `<div class="nav-label">Workspace</div>` + items.map(([v, i, l, sub, extra = '']) =>
+    `<button class="nav-item ${S.view === v ? 'active' : ''}" data-action="nav" data-view="${v}" ${S.view === v ? 'aria-current="page"' : ''}>${ic(i)}<span>${l}<span class="n-sub">${sub}</span></span>${extra}</button>`).join('') +
+    `<div class="nav-label" style="margin-top:8px">Records</div>
+     <button class="nav-item ${S.view === 'activity' ? 'active' : ''}" data-action="nav" data-view="activity">${ic('audit')}<span>Activity log<span class="n-sub">Every decision, recorded</span></span></button>`;
+  const labels = { resolve: 'Unified Search', simulator: 'Stamping Simulator', exceptions: 'Exception Queue', activity: 'Activity log' };
+  let crumb = `<b>${labels[S.view]}</b>`;
+  if (S.view === 'resolve' && S.resolve.mode === 'entity') crumb = `Unified Search / <b>${esc(S.entities[S.resolve.ses].name)}</b>`;
+  $('#crumb').innerHTML = crumb;
+}
+
+/* ============ Search ============ */
+function suggestions(q) {
+  const n = norm(q); if (!n) return [];
+  const out = [], seen = new Set();
+  const push = o => { if (!seen.has(o.label)) { seen.add(o.label); out.push(o); } };
+  Object.values(S.entities).forEach(e => {
+    if (norm(e.id).includes(n)) push({ q: e.id, label: e.id, mono: true, sub: e.name, pill: ['ok', 'Canonical'] });
+    if (norm(e.name).includes(n)) push({ q: e.id, label: e.name, sub: e.id, pill: ['ok', 'Canonical'] });
+  });
+  const legacyIds = [...new Set([...S.registry.map(r => r.legacy), ...S.exceptions.map(x => x.legacy)])];
+  legacyIds.forEach(id => {
+    if (!norm(id).includes(n)) return;
+    const r = resolveId(id);
+    if (r.status === 'resolved') push({ q: id, label: id, mono: true, sub: `→ ${r.canonical} · ${S.entities[r.canonical].name}`, pill: ['', sysOf(id)] });
+    else push({ q: id, label: id, mono: true, sub: r.status === 'ambiguous' ? `Maps to ${r.candidates.length} entities · in review` : r.status === 'conflict' ? 'Conflicting identity · in review' : 'No registry mapping', pill: [r.status === 'conflict' ? 'bad' : 'warn', 'Unresolved'] });
+  });
+  S.exceptions.forEach(x => { if (norm(x.name).includes(n)) push({ q: x.legacy, label: x.name, sub: `${x.legacy} · in review ${x.id}`, pill: ['warn', 'Unresolved'] }); });
+  return out.slice(0, 8);
+}
+function attachSearch(input, dd) {
+  let hl = -1, list = [];
+  const draw = () => {
+    list = suggestions(input.value);
+    if (!input.value.trim() || document.activeElement !== input) { dd.hidden = true; return; }
+    if (!list.length) { dd.innerHTML = `<div class="dd-foot" style="border:0;margin:0"><span>No ID or name contains “${esc(input.value)}”. Press Enter to check the registry anyway.</span></div>`; dd.hidden = false; return; }
+    dd.innerHTML = list.map((s, i) => `<button class="dd-item ${i === hl ? 'hl' : ''}" data-i="${i}" type="button"><span class="${s.mono ? 'mono' : ''}">${esc(s.label)}</span><span class="sub">${esc(s.sub)}</span><span class="pill sm ${s.pill[0]}">${s.pill[1]}</span></button>`).join('') +
+      `<div class="dd-foot"><span>↑↓ to move · Enter to resolve</span><span>Nexus Registry lookup</span></div>`;
+    dd.hidden = false;
+  };
+  input.addEventListener('input', () => { hl = -1; draw(); });
+  input.addEventListener('focus', draw);
+  input.addEventListener('blur', () => setTimeout(() => dd.hidden = true, 120));
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); hl = Math.min(hl + 1, list.length - 1); draw(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); hl = Math.max(hl - 1, -1); draw(); }
+    else if (e.key === 'Escape') { dd.hidden = true; input.blur(); }
+    else if (e.key === 'Enter') { e.preventDefault(); const pick = hl >= 0 ? list[hl].q : input.value; dd.hidden = true; input.blur(); resolve(pick); }
+  });
+  dd.addEventListener('mousedown', e => { const b = e.target.closest('.dd-item'); if (!b) return; e.preventDefault(); dd.hidden = true; input.blur(); resolve(list[+b.dataset.i].q); });
+}
+
+/* Search entry point: identifiers go through the registry; names only return candidates */
+function resolve(raw) {
+  const q = String(raw || '').trim(); if (!q) return;
+  const looksLikeId = /\d/.test(q);
+  let r = resolveId(q);
+  if (r.status === 'not_found' && !r.ex && !r.closed && !looksLikeId) {
+    const n = norm(q);
+    const ents = Object.values(S.entities).filter(e => norm(e.name).includes(n));
+    const exs = S.exceptions.filter(x => norm(x.name).includes(n));
+    S.resolve = (ents.length || exs.length) ? { mode: 'results', ents, exs, query: q } : { mode: 'notfound', query: q, r };
+  } else if (r.status === 'resolved') {
+    S.resolve = { mode: 'entity', ses: r.canonical, via: r.via, rule: r.rule, query: q };
+    S.treeOpen = {}; S.treeDefault = null;
+    S.ledgerF = { sys: 'All', status: 'All', settle: 'All' };
+    if (r.canonical === 'SES-8842-ACME') complete('search');
+  } else {
+    S.resolve = { mode: r.status === 'not_found' ? 'notfound' : r.status, query: q, r };
+  }
+  $('#q-top').value = q;
+  go('resolve');
+}
+
+/* ============ Unified Search view ============ */
+function renderResolve() {
+  const el = $('#view-resolve'), r = S.resolve;
+  if (r.mode === 'overview') { el.innerHTML = overviewHTML(); attachSearch($('#q-hero'), $('#dd-hero')); return; }
+  const back = `<button class="back" data-action="overview">${ic('arrow', 14)}Back to search</button>`;
+  el.innerHTML = back + (r.mode === 'entity' ? entityHTML(S.entities[r.ses]) : stateHTML(r));
+}
+
+function overviewHTML() {
+  const good = ['MXM-77329', 'CPX-0991', 'Passport-A1B2', 'ACH-55120', 'SES-8842-ACME', 'MXM-84721'];
+  const edge = [['MXM-99110', 'bad'], ['ACH-61877', 'warn'], ['CPX-5521', 'warn'], ['MXM-00000', '']];
+  const ents = Object.keys(S.entities).length;
+  const maps = new Set(S.registry.filter(r => mappingsFor(r.legacy).length === 1).map(r => r.legacy)).size;
+  const stamped = S.txns.filter(t => t.stamped).length;
+  return `
+  <div class="card hero">
+    <div>
+      <div class="eyebrow">Unified Search</div>
+      <h1 style="margin-top:8px">Resolve any merchant identifier to one canonical ID</h1>
+      <p style="margin-top:6px">Enter a legacy ID from MXM, CPX, Passport or ACH, or an SES canonical ID. The Nexus Registry returns the entity only when exactly one mapping exists. Business names return candidates, never a resolution.</p>
+    </div>
+    <div class="search-box">
+      <label class="search xl" for="q-hero">${ic('search', 18)}
+        <input id="q-hero" type="text" autocomplete="off" spellcheck="false" placeholder="Search by MXM, CPX, Passport ID, or Business Name...">
+        <button class="btn btn-primary" data-action="hero-search">Search ${ic('arrow', 14)}</button>
+      </label>
+      <div class="dropdown" id="dd-hero" hidden></div>
+    </div>
+    <div class="try"><span class="label">Resolves</span>${good.map(t => `<button class="chip mono" data-action="resolve" data-q="${t}">${t}</button>`).join('')}</div>
+    <div class="try"><span class="label">Edge cases</span>${edge.map(([t, c]) => `<button class="chip mono ${c}" data-action="resolve" data-q="${t}">${t}</button>`).join('')}<span class="faint" style="font-size:12px">conflict · ambiguous · unmapped · unknown</span></div>
+  </div>
+
+  <div class="grid g-kpi">
+    <div class="card kpi"><span class="label">Transactions evaluated <span class="sim-tag">Simulated</span></span><span class="val">50k</span><span class="foot">Illustrative benchmark from the demo spec</span></div>
+    <div class="card kpi"><span class="label">Avg query latency <span class="sim-tag">Simulated</span></span><span class="val">12<small>ms</small></span><span class="foot">Not a measured production figure</span></div>
+    <div class="card kpi"><span class="label">Auto-resolution <span class="sim-tag">Simulated</span></span><span class="val">94<small>%</small></span><span class="foot">Share with exactly one registry mapping</span></div>
+    <div class="card kpi"><span class="label">Ambiguous auto-merges</span><span class="val" style="color:var(--ok-text)">0</span><span class="foot">Enforced by the rules in this prototype</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>${ic('link')}How the three capabilities connect</h2><div class="right"><span class="pill sm">Registry version r${S.regVersion}</span></div></div>
+    <div class="flow">
+      <div class="flow-step"><h3><span class="ic-b">${ic('resolve', 15)}</span>Nexus Registry</h3><p>Maps each legacy ID to one SES canonical ID. Live now: <b>${ents}</b> entities, <b>${maps}</b> unique mappings.</p><button class="btn btn-sm" data-action="resolve" data-q="MXM-77329">Resolve MXM-77329</button></div>
+      <div class="flow-arrow">${ic('arrow', 18)}</div>
+      <div class="flow-step"><h3><span class="ic-b">${ic('bolt', 15)}</span>Identity Stamping</h3><p>Uses the registry to inject canonical IDs into payloads, keeping every legacy field. Stamped this session: <b>${stamped}</b>.</p><button class="btn btn-sm" data-action="nav" data-view="simulator">Open simulator</button></div>
+      <div class="flow-arrow">${ic('arrow', 18)}</div>
+      <div class="flow-step w"><h3><span class="ic-b">${ic('alert', 15)}</span>Exception Queue</h3><p>Anything the registry can't resolve uniquely waits here for a person. Open now: <b>${openCount()}</b>.</p><button class="btn btn-sm" data-action="nav" data-view="exceptions">Review exceptions</button></div>
+    </div>
+  </div>
+  ${bridgeHTML()}`;
+}
+
+/* ---- Entity 360 ---- */
+function entityHTML(e) {
+  const r = S.resolve;
+  const links = linksOf(e.id), disputed = disputedOf(e.id);
+  const pis = e.subaccounts.reduce((a, s) => a + s.instruments.length, 0);
+  const parent = e.parent ? S.entities[e.parent] : null;
+  const kids = childrenOf(e.id);
+  return `
+  <div class="card ent-head">
+    <div class="ent-top">
+      <div class="ent-logo">${initials(e.name)}</div>
+      <div class="ent-title">
+        <h1>${esc(e.name)}</h1>
+        <div class="row">
+          <span class="pill ok">${ic('check', 13, 2.4)}Canonical ID: <span class="mono">${e.id}</span></span>
+          <span class="pill">${e.type}</span>
+          ${e.isolatedFrom ? `<span class="pill info">Created by review ${e.isolatedFrom.ex}</span>` : ''}
+        </div>
+        <div class="sub">${parent ? `Child of <button class="idlink" data-action="resolve" data-q="${parent.id}">${parent.id}</button> ${esc(parent.name)} · ` : ''}Tax ID <span class="mono">${e.taxId}</span> · ${e.mcc} · ${e.region} · Tenant <span class="mono">${e.tenant}</span></div>
+      </div>
+      <div class="ent-actions">
+        <button class="btn" data-action="copy" data-text="${e.id}">${ic('copy', 14)}Copy ID</button>
+        ${links.length ? `<button class="btn btn-primary" data-action="to-sim">${ic('bolt', 14)}Stamp a transaction</button>` : ''}
+      </div>
+    </div>
+    <div class="trace" aria-label="Resolution trace">
+      <span>Resolved</span><span class="id">${esc(r.via)}</span><span class="arrow">${ic('arrow', 13)}</span>
+      <span class="rule">${r.rule === 'canonical_id' ? 'canonical ID lookup' : 'exact unique mapping · 1 of 1'}</span><span class="arrow">${ic('arrow', 13)}</span>
+      <span class="id" style="color:var(--ok-text);font-weight:600">${e.id}</span><span class="sep"></span>
+      <span>Nexus Registry r${S.regVersion}</span>${r.rule !== 'canonical_id' ? `<span class="sep"></span><span>Match rule <span class="mono">${esc(r.rule)}</span></span>` : ''}
+    </div>
+    ${e.isolatedFrom ? `<div class="banner info">${ic('info', 16)}<div>Created by review <b>${e.isolatedFrom.ex}</b> on ${e.isolatedFrom.t}.${e.isolatedFrom.from.length ? ` Kept separate from ${e.isolatedFrom.from.map(f => `<button class="idlink" data-action="resolve" data-q="${f}">${f}</button>`).join(' and ')} because the evidence did not support a mapping.` : ''}</div></div>` : ''}
+    ${disputed.length ? `<div class="banner warn">${ic('alert', 16)}<div>${disputed.map(d => `<span class="mono">${d.legacy}</span>`).join(', ')} also maps to another entity, so it is excluded from this view until review <button class="idlink" data-action="review" data-ex="${S.exceptions.find(x => x.legacy === disputed[0].legacy)?.id}">${S.exceptions.find(x => x.legacy === disputed[0].legacy)?.id}</button> is decided.</div></div>` : ''}
+    <dl class="meta">
+      <div><dt>Entity status</dt><dd class="${e.status === 'Active' ? 'ok' : ''}" style="${e.status === 'Active' ? '' : 'color:var(--warn-text)'}">${e.status}</dd></div>
+      <div><dt>Linked legacy IDs</dt><dd>${links.length}</dd></div>
+      <div><dt>Sub-accounts</dt><dd>${e.subaccounts.length}</dd></div>
+      <div><dt>Payment instruments</dt><dd>${pis}</dd></div>
+      <div><dt>Child entities</dt><dd>${kids.length}</dd></div>
+      <div><dt>Customer since</dt><dd>${e.since}</dd></div>
+    </dl>
+  </div>
+
+  <div class="grid g-2">
+    <div class="card">
+      <div class="card-head"><h2>${ic('tree')}Identity graph</h2>
+        <div class="right"><button class="btn btn-sm" data-action="tree-all" data-v="open">Expand all</button><button class="btn btn-sm" data-action="tree-all" data-v="closed">Collapse all</button></div></div>
+      <div class="tree-wrap"><ul class="tree">${treeRoot(e)}</ul></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>${ic('wallet')}Financial overview</h2><div class="right"><span class="sim-tag">Simulated</span></div></div>
+      <div class="card-body">${financeHTML(e)}</div>
+    </div>
+  </div>
+  ${routingHTML(e)}
+  ${ledgerHTML(e)}`;
+}
+
+/* Expandable hierarchy: SES entity → legacy IDs, sub-accounts → instruments, child entities */
+function isOpen(key, def) { return key in S.treeOpen ? S.treeOpen[key] : S.treeDefault === 'open' ? true : S.treeDefault === 'closed' ? false : def; }
+function treeRoot(e) {
+  const root = e.parent ? S.entities[e.parent] : e;
+  return entNode(root, e.id);
+}
+function tnode({ key, chip, chipCls, id, label, meta = '', kids = '', def = false, current = false, grp = false }) {
+  const open = kids ? isOpen(key, def) : false;
+  return `<li><div class="tn ${current ? 'current' : ''} ${grp ? 'grp' : ''}">
+    ${kids ? `<button class="tw ${open ? 'open' : ''}" data-action="tree" data-key="${key}" data-state="${open ? 1 : 0}" aria-expanded="${open}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(id || label)}">${ic('chev', 14, 2)}</button>` : '<span class="tw-sp"></span>'}
+    ${chip ? `<span class="tchip ${chipCls}">${chip}</span>` : ''}
+    ${id ? `<span class="id">${id}</span>` : ''}<span class="lbl">${label}</span>${meta ? `<span class="meta-r">${meta}</span>` : ''}
+  </div>${open ? `<ul>${kids}</ul>` : ''}</li>`;
+}
+function entNode(ent, curId) {
+  const cur = ent.id === curId;
+  const onPath = cur || S.entities[curId].parent === ent.id;
+  const links = linksOf(ent.id), disputed = disputedOf(ent.id), kids = childrenOf(ent.id);
+  let inner = '';
+  if (links.length || disputed.length) inner += tnode({ key: `lg:${ent.id}`, grp: true, label: `Legacy identifiers (${links.length})`, def: cur,
+    kids: links.map(l => tnode({ key: `l:${l.legacy}`, chip: sysOf(l.legacy), chipCls: '', id: l.legacy, label: esc(l.role), meta: `<span class="rule-tag">${esc(l.rule)}</span>` })).join('') +
+      disputed.map(d => tnode({ key: `d:${d.legacy}`, chip: 'Disputed', chipCls: 'dis', id: d.legacy, label: 'Maps to more than one entity', meta: `<span class="pill sm warn">In review</span>` })).join('') });
+  if (ent.subaccounts.length) inner += tnode({ key: `sg:${ent.id}`, grp: true, label: `Sub-accounts (${ent.subaccounts.length})`, def: cur,
+    kids: ent.subaccounts.map(s => tnode({ key: `s:${s.id}`, chip: 'Sub-account', chipCls: 'sub', id: s.id, label: `${esc(s.name)} · ${s.ccy}`, meta: `via <span class="mono">${s.legacy}</span>`, def: cur,
+      kids: s.instruments.map(p => tnode({ key: `p:${p.id}`, chip: 'Instrument', chipCls: 'pi', id: p.id, label: esc(p.label), meta: esc(p.kind) })).join('') })).join('') });
+  if (kids.length) inner += tnode({ key: `cg:${ent.id}`, grp: true, label: `Child entities (${kids.length})`, def: onPath, kids: kids.map(k => entNode(k, curId)).join('') });
+  return tnode({ key: `e:${ent.id}`, chip: 'SES', chipCls: 'ses', id: ent.id, label: esc(ent.name), current: cur, def: onPath,
+    meta: cur ? '<span class="pill sm ok">Viewing</span>' : `<button class="btn btn-sm" data-action="resolve" data-q="${ent.id}">Open</button>`, kids: inner });
+}
+
+function financeHTML(e) {
+  if (!e.subaccounts.length) {
+    const kids = childrenOf(e.id);
+    return `<div class="empty-state" style="padding:20px 8px"><div class="ic-wrap">${ic('wallet', 20)}</div><p>No sub-accounts are held directly by this entity.${kids.length ? ` Balances sit with its ${kids.length} child entities.` : ''}</p>
+      ${kids.map(k => `<button class="btn btn-sm" data-action="resolve" data-q="${k.id}">${esc(k.name)}</button>`).join('')}</div>`;
+  }
+  const ccys = [...new Set(e.subaccounts.map(s => s.ccy))];
+  const blocks = ccys.map(c => {
+    const subs = e.subaccounts.filter(s => s.ccy === c);
+    const av = subs.reduce((a, s) => a + s.avail, 0), pe = subs.reduce((a, s) => a + s.pending, 0);
+    return `<div class="ccy"><div class="ccy-h"><b>${c}</b><span>${subs.length} sub-account${subs.length > 1 ? 's' : ''}</span></div>
+      <div class="ccy-grid"><div><div class="l">Available</div><div class="v">${money(av, c)}</div></div><div><div class="l">Pending</div><div class="v pend">${money(pe, c)}</div></div><div><div class="l">30-day volume</div><div class="v">${e.volume[c] != null ? money(e.volume[c], c) : '—'}</div></div></div></div>`;
+  }).join('');
+  return `<div class="fin">${blocks}
+    <div class="table-wrap" style="border:1px solid var(--line);border-radius:var(--r-md)"><table>
+      <thead><tr><th>Sub-account</th><th>Currency</th><th class="r">Available</th><th class="r">Pending</th></tr></thead>
+      <tbody>${e.subaccounts.map(s => `<tr><td><span class="id">${s.id}</span> <span class="muted">${esc(s.name)}</span></td><td>${s.ccy}</td><td class="r num">${money(s.avail, s.ccy)}</td><td class="r num">${money(s.pending, s.ccy)}</td></tr>`).join('')}</tbody>
+    </table></div>
+    <p class="faint" style="font-size:12px">${ccys.length > 1 ? 'Each currency is totalled separately. Amounts are never added across currencies without conversion. ' : ''}All balances are simulated.</p></div>`;
+}
+
+function ledgerHTML(e) {
+  const all = txnsFor(e.id);
+  const f = S.ledgerF;
+  const rows = all.filter(t => (f.sys === 'All' || t.sys === f.sys) && (f.status === 'All' || t.status === f.status) && (f.settle === 'All' || t.settle === f.settle));
+  const opt = (name, vals) => `<select class="select" id="f-${name}" data-filter="${name}" aria-label="Filter by ${name}">${['All', ...vals].map(v => `<option ${f[name] === v ? 'selected' : ''}>${v}</option>`).join('')}</select>`;
+  const txPill = s => ({ Completed: 'ok', Pending: 'warn', Failed: 'bad', Reversed: 'bad' }[s] || '');
+  const stPill = s => ({ Settled: 'ok', Pending: 'warn', Unsettled: '', Returned: 'bad' }[s] || '');
+  const idCell = id => id === e.id ? `<span class="idlink self">${id}</span>` : `<button class="idlink" data-action="resolve" data-q="${id}">${id}</button>`;
+  const systems = [...new Set(all.map(t => t.sys))].sort();
+  return `<div class="card" id="ledger">
+    <div class="card-head"><h2>${ic('list')}Unified transaction ledger</h2><span class="muted" style="font-size:12.5px">${rows.length} of ${all.length} · all systems</span>
+      <div class="right filters">
+        <label class="field" for="f-sys">Source ${opt('sys', systems)}</label>
+        <label class="field" for="f-status">Status ${opt('status', ['Completed', 'Pending', 'Failed', 'Reversed'])}</label>
+        <label class="field" for="f-settle">Settlement ${opt('settle', ['Settled', 'Pending', 'Unsettled', 'Returned'])}</label>
+      </div></div>
+    ${rows.length ? `<div class="table-wrap"><table>
+      <thead><tr><th>Transaction ID</th><th>Source system</th><th>Date &amp; time</th><th>Source canonical ID</th><th>Destination canonical ID</th><th class="r">Amount</th><th>Currency</th><th>Status</th><th>Settlement</th></tr></thead>
+      <tbody>${rows.map(t => { const dir = t.dst_can === e.id && t.src_can !== e.id ? 'in' : t.src_can === e.id && t.dst_can !== e.id ? 'out' : '';
+        return `<tr class="${t.fresh ? 'fresh' : ''}"><td class="id">${t.id}${t.stamped ? ' <span class="pill sm info">Stamped here</span>' : ''}</td><td><span class="pill sm">${t.sys}</span></td><td class="num">${t.ts}</td>
+        <td>${idCell(t.src_can)}</td><td>${idCell(t.dst_can)}</td>
+        <td class="r num ${dir === 'in' ? 'amt-in' : 'amt-out'}">${dir === 'in' ? '+' : dir === 'out' ? '−' : ''}${money(t.amount, t.ccy)}</td><td>${t.ccy}</td>
+        <td><span class="pill sm ${txPill(t.status)}">${t.status}</span></td><td><span class="pill sm ${stPill(t.settle)}">${t.settle}</span></td></tr>`; }).join('')}</tbody>
+    </table></div>` : `<div class="empty-state"><div class="ic-wrap">${ic('list', 20)}</div><p>${all.length ? 'No transactions match these filters.' : 'No transactions are recorded against this canonical ID yet.'}</p>${all.length ? '<button class="btn btn-sm" data-action="clear-filters">Clear filters</button>' : ''}</div>`}
+  </div>`;
+  }
+
+function stateHTML(r) {
+  if (r.mode === 'results') {
+    return `<div class="card"><div class="card-head"><h2>${ic('search')}Candidates for “${esc(r.query)}”</h2><div class="right"><span class="faint" style="font-size:12px">A name is not an identifier. Pick a record to open it by ID.</span></div></div>
+    <div class="results">
+      ${r.ents.map(e => `<button class="res" data-action="resolve" data-q="${e.id}"><div class="ent-logo" style="width:36px;height:36px;font-size:13px">${initials(e.name)}</div><div><div class="name">${esc(e.name)}</div><div class="sub mono">${e.id} · ${linksOf(e.id).length} linked IDs</div></div><span class="pill sm ok">Canonical</span></button>`).join('')}
+      ${r.exs.map(x => `<button class="res" data-action="review" data-ex="${x.id}"><div class="ent-logo" style="width:36px;height:36px;font-size:13px">${initials(x.name)}</div><div><div class="name">${esc(x.name)}</div><div class="sub mono">${x.legacy} · in review ${x.id}</div></div><span class="pill sm warn">Unresolved</span></button>`).join('')}
+    </div></div>`;
+  }
+  const x = r.r?.ex;
+  if (r.mode === 'ambiguous') {
+    return `<div class="card"><div class="empty-state">
+      <div class="ic-wrap warn">${ic('alert', 20)}</div><span class="pill warn caps">Unresolved · ambiguous mapping</span>
+      <h2><span class="mono">${esc(r.r.via)}</span> maps to ${r.r.candidates.length} entities</h2>
+      <p>Rule 4: when an identifier has more than one mapping, Nexus Bridge does not choose one. Nothing is returned as the canonical ID until a reviewer decides.</p>
+      <div class="cands">${r.r.candidates.map(c => `<div class="cand"><span class="tchip ses">SES</span><span class="id">${c}</span><span class="muted">${esc(S.entities[c].name)}</span><button class="btn btn-sm" style="margin-left:auto" data-action="resolve" data-q="${c}">View entity</button></div>`).join('')}</div>
+      ${x ? `<button class="btn btn-primary" data-action="review" data-ex="${x.id}">Open review ${x.id} ${ic('arrow', 14)}</button>` : ''}
+    </div></div>`;
+  }
+  if (r.mode === 'conflict') {
+    return `<div class="card"><div class="empty-state">
+      <div class="ic-wrap bad">${ic('ban', 20)}</div><span class="pill bad caps">Unresolved · conflicting identity</span>
+      <h2><span class="mono">${esc(x.legacy)}</span> is held for review</h2>
+      <p>Rule 3: its ${x.fields.filter(f => f[3] === 'conflict').map(f => f[0].toLowerCase()).join(' and ')} conflict with <span class="mono">${x.candidates[0]}</span>. It is not linked to any canonical ID and nothing has been merged.</p>
+      <button class="btn btn-primary" data-action="review" data-ex="${x.id}">Open review ${x.id} ${ic('arrow', 14)}</button>
+    </div></div>`;
+  }
+  const closed = r.r?.closed;
+  return `<div class="card"><div class="empty-state">
+    <div class="ic-wrap">${ic('search', 20)}</div><span class="pill caps">Unresolved · no mapping</span>
+    <h2>No registry mapping for “${esc(r.query)}”</h2>
+    <p>Rule 2: Nexus Bridge never invents a canonical ID. ${x ? `This identifier is waiting in review <b>${x.id}</b>.` : closed ? `A proposed mapping for it was rejected in ${closed.id}.` : 'Check the identifier for typos, or try one of these.'}</p>
+    ${x ? `<button class="btn btn-primary" data-action="review" data-ex="${x.id}">Open review ${x.id} ${ic('arrow', 14)}</button>` :
+      `<div class="try" style="justify-content:center">${['MXM-77329', 'CPX-0991', 'Passport-A1B2'].map(t => `<button class="chip mono" data-action="resolve" data-q="${t}">${t}</button>`).join('')}</div>`}
+  </div></div>`;
+}
+
+/* ============ Stamping Simulator ============ */
+const SCEN = {
+  clean:     { label: 'Clean resolution',   src: 'MXM-77329', dst: 'CPX-7710',  type: 'ACH_CREDIT', amount: 7450.00, memo: 'Invoice INV-2291' },
+  missing:   { label: 'Missing mapping',    src: 'MXM-77329', dst: 'CPX-5521',  type: 'ACH_CREDIT', amount: 1320.40, memo: 'Supplies order PO-5521' },
+  conflict:  { label: 'Conflicting identity', src: 'MXM-99110', dst: 'CPX-7710', type: 'ACH_CREDIT', amount: 4310.50, memo: 'Supplier invoice 7730' },
+  ambiguous: { label: 'Ambiguous mapping',  src: 'MXM-77329', dst: 'ACH-61877', type: 'ACH_CREDIT', amount: 2980.00, memo: 'Freight invoice FR-118' },
+  coffee:    { label: 'Card settlement · Acme Coffee', group: 'gate', src: 'CPX-9000', dst: 'MXM-84721', type: 'CARD_SETTLEMENT', amount: 3860.25, memo: 'Card batch 0928-A', party: 'destination', rail: 'Card', caller: 'TNT-NA-03', route: 'card.settle.batch', ledgerSys: 'MXM' },
+  pending:   { label: 'Entitlement pending', group: 'gate', src: 'MXM-84990', dst: 'MXM-80114', type: 'PAYOUT', amount: 5200.00, memo: 'Supplier payout SP-204', party: 'source', rail: 'Payout', caller: 'TNT-NA-03', route: 'payout.batch' },
+  tenant:    { label: 'Cross-tenant access', group: 'gate', src: 'MXM-77329', dst: 'CPX-7710', type: 'ACH_CREDIT', amount: 9900.00, memo: 'Invoice INV-3310', party: 'source', rail: 'ACH', caller: 'TNT-NA-02' }
+};
+const STAGES = [['Read payload', 'legacy request'], ['Resolve source', 'Nexus Registry'], ['Resolve destination', 'Nexus Registry'], ['Authorize tenant', 'caller token → SES'], ['Check entitlements', 'pre-flight gate'], ['Resolve provider', 'provider ID mapping'], ['Inject identity', 'canonical IDs + tenant'], ['Validate', 'compatibility check'], ['Persist', 'Unified Transaction API']];
+const keyFor = (side, id) => `${side}_${sysOf(id).toLowerCase()}_id`;
+
+function currentTxnId() {
+  let id = `TXN-20260928-${S.txnSeq}`;
+  while (S.txns.some(t => t.id === id)) { S.txnSeq++; id = `TXN-20260928-${S.txnSeq}`; }
+  return id;
+}
+function payloadFor(sc) {
+  return [['txn_id', currentTxnId()], ['type', sc.type], ['amount', sc.amount], ['currency', 'USD'], [keyFor('source', sc.src), sc.src], [keyFor('destination', sc.dst), sc.dst], ['memo', sc.memo], ['legacy_route', sc.route || 'ach.batch.east'], ['created_at', '2026-09-28T09:41:12Z']];
+}
+function jsonHTML(entries) {
+  const val = v => typeof v === 'number' ? `<span class="nm">${v.toFixed(2)}</span>` : typeof v === 'boolean' ? `<span class="bo">${v}</span>` : v === null ? '<span class="bo">null</span>' : `<span class="s">"${esc(v)}"</span>`;
+  const lines = [{ h: '<span class="p">{</span>' }];
+  entries.forEach(([k, v, mark, tag], i) => {
+    const comma = i < entries.length - 1 ? '<span class="p">,</span>' : '';
+    const key = `  <span class="k">"${k}"</span><span class="p">: </span>`;
+    if (Array.isArray(v)) {
+      lines.push({ h: key + '<span class="p">{</span>', mark, tag });
+      v.forEach(([k2, v2], j) => lines.push({ h: `    <span class="k">"${k2}"</span><span class="p">: </span>${val(v2)}${j < v.length - 1 ? '<span class="p">,</span>' : ''}`, mark }));
+      lines.push({ h: '  <span class="p">}</span>' + comma, mark });
+    } else lines.push({ h: key + val(v) + comma, mark, tag });
+  });
+  lines.push({ h: '<span class="p">}</span>' });
+  return lines.map((l, i) => `<div class="code-line ${l.mark || ''}"><span class="ln">${i + 1}</span><span class="lc">${l.h}</span>${l.tag ? `<span class="tag">${l.tag}</span>` : ''}</div>`).join('');
+}
+
+/* The stamping pipeline: resolve both sides, inject only when both resolve uniquely */
+function processPayload(sc) {
+  const input = payloadFor(sc);
+  const src = resolveId(sc.src), dst = resolveId(sc.dst);
+  const failed = src.status !== 'resolved' ? { side: 'source', id: sc.src, r: src, stage: 1 } : dst.status !== 'resolved' ? { side: 'destination', id: sc.dst, r: dst, stage: 2 } : null;
+  if (!failed) {
+    const se = S.entities[src.canonical], de = S.entities[dst.canonical];
+    const gate = gateCheck(sc, src, dst), pe = gate.party;
+    if (gate.fail) {
+      const output = [...input.map(e => [...e]),
+        ['identity_status', 'RESOLVED', 'held'],
+        ['nexus_decision', 'BLOCKED', 'held', 'pre-flight'],
+        ['blocked_at', gate.fail.at, 'held'],
+        ['reason', gate.fail.code, 'held'],
+        ['persisted', false, 'held']];
+      return { kind: 'gate', input, output, src, dst, sc, gate, failed: { stage: gate.fail.stage } };
+    }
+    const added = [
+      ['source_canonical_id', src.canonical, 'inj', 'injected'],
+      ['destination_canonical_id', dst.canonical, 'inj', 'injected'],
+      ['tenant_metadata', [['tenant_id', pe.tenant], ['source_parent_entity', se.parent || se.id], ['destination_parent_entity', de.parent || de.id], ['region', pe.region.toLowerCase()]], 'inj2', 'tenant metadata'],
+      ['provider_routing', [['rail', gate.rail.toLowerCase()], ['provider', gate.provider.name], [gate.provider.kind.includes('MXM') ? 'merchant_id' : 'account_id', gate.provider.id]], 'inj2', 'provider routing'],
+      ['identity_resolution', [['method', 'exact_unique_mapping'], ['registry_version', `r${S.regVersion}`], ['simulated', true]], 'inj2', 'resolution metadata']
+    ];
+    const output = [...input.map(e => [...e]), ...added];
+    return { kind: 'ok', input, output, src, dst, sc, gate, addedCount: added.length };
+  }
+  const reason = { not_found: 'no_registry_mapping', conflict: 'conflicting_identity', ambiguous: 'ambiguous_mapping' }[failed.r.status];
+  const exRef = failed.r.ex?.id;
+  const output = [...input.map(e => [...e]),
+    ['identity_status', 'UNRESOLVED', 'held', 'blocked'],
+    ['unresolved_identity', keyFor(failed.side, failed.id), 'held'],
+    ['reason', reason, 'held'],
+    ...(exRef ? [['exception_ref', exRef, 'held']] : []),
+    ['persisted', false, 'held']];
+  return { kind: 'blocked', input, output, src, dst, sc, failed, reason, exRef };
+}
+
+function checksHTML(res) {
+  const row = (cls, title, d, extra = '') => `<div class="check ${cls}"><span class="ci">${ic(cls === 'ok' ? 'check' : cls === 'bad' ? 'x' : 'alert', 12, 2.6)}</span><div><b>${title}</b><span class="d">${d}</span></div>${extra}</div>`;
+  const side = (label, id, r) => r.status === 'resolved'
+    ? row('ok', `${label} identity resolved`, `<span class="mono">${id}</span> → <span class="mono">${r.canonical}</span> · exact unique mapping`)
+    : row(r.status === 'not_found' ? 'bad' : 'warn', `${label} identity unresolved`, `<span class="mono">${id}</span> ${describe(r)}. ${{ not_found: 'Rule 2: no canonical ID is invented.', conflict: 'Rule 3: routed to the exception queue.', ambiguous: 'Rule 4: no entity is selected.' }[r.status]}`);
+  const inKeys = res.input.map(e => e[0]);
+  const unchanged = res.input.filter(([k, v]) => { const o = res.output.find(x => x[0] === k); return o && o[1] === v; }).length;
+  let html = side('Source', res.sc.src, res.src);
+  html += res.src.status === 'resolved' ? side('Destination', res.sc.dst, res.dst) : '';
+  if (res.failed?.side === 'source') html += row('warn', 'Destination not evaluated', 'The pipeline stops at the first unresolved identity.');
+  if (res.gate) { const g = res.gate, f = g.fail?.stage;
+    html += f === 3 ? row('bad', 'Tenant not authorized', esc(g.fail.detail)) : row('ok', 'Tenant authorized', `Caller tenant <span class="mono">${g.caller}</span> owns <span class="mono">${g.party.id}</span>`);
+    if (f !== 3) html += f === 4 ? row('bad', 'Entitlement check failed', esc(g.fail.detail)) : row('ok', 'Entitlement active', `${g.rail} is ACTIVE for <span class="mono">${g.party.id}</span>`);
+    if (f !== 3 && f !== 4) html += f === 5 ? row('bad', 'No provider identity', esc(g.fail.detail)) : row('ok', 'Provider resolved', `<span class="mono">${g.party.id}</span> → ${g.provider.kind} <span class="mono">${g.provider.id}</span> · ${g.provider.use}`);
+  }
+  html += row('ok', 'Legacy fields unchanged', `${unchanged} of ${inKeys.length} original fields are identical in the output`);
+  if (res.kind === 'ok') {
+    html += row('ok', 'Additive change only', `${res.addedCount} fields added · 0 removed · 0 modified`);
+    html += row('ok', 'Persisted to the simulated transaction store', `<span class="mono">${res.input[0][1]}</span> · status STAMPED · routed to ${res.gate.provider.name}`, `<button class="btn btn-sm" data-action="view-ledger">View in ledger</button>`);
+  } else {
+    if (res.kind === 'gate') { html += row('bad', 'Blocked before the Unified Transaction API', 'Nexus Bridge stopped the transaction at pre-flight, so orchestration was never called.'); html += row('bad', 'Not persisted', 'No canonical IDs were injected and nothing was sent downstream.'); return `<div class="checks">${html}</div><div class="check-foot">Simulated compatibility check. It compares the output with the incoming request. No downstream systems were called.</div>`; }
+    html += row('bad', 'Stamping blocked', 'Required identities are unresolved, so no canonical IDs were injected.');
+    html += row('bad', 'Not persisted', res.exRef ? `Held against review ${res.exRef}.` : 'Held until the identifier is mapped.', res.exRef ? `<button class="btn btn-sm" data-action="review" data-ex="${res.exRef}">Open ${res.exRef}</button>` : '');
+  }
+  return `<div class="checks">${html}</div><div class="check-foot">Simulated compatibility check. It compares the output with the incoming request. No downstream systems were called.</div>`;
+}
+
+function renderSim() {
+  const s = S.sim, sc = SCEN[s.scenario], res = s.result;
+  const input = res ? res.input : payloadFor(sc);
+  const stageCls = i => {
+    if (s.status === 'idle') return '';
+    if (s.status === 'done' && res.kind !== 'ok') return i < res.failed.stage ? 'done' : i === res.failed.stage ? 'fail' : 'skip';
+    if (i < s.stage || s.status === 'done') return 'done';
+    return i === s.stage ? 'active' : '';
+  };
+  const outPill = s.status === 'idle' ? '<span class="pill sm">Waiting</span>' : s.status === 'running' ? '<span class="pill sm info">Processing</span>' : res.kind === 'ok' ? `<span class="pill sm ok">${ic('check', 12, 2.4)}Stamped</span>` : `<span class="pill sm bad">Blocked · ${res.kind === 'gate' ? res.gate.fail.short : 'unresolved'}</span>`;
+  const pre = { src: resolveId(sc.src), dst: resolveId(sc.dst) };
+  $('#view-simulator').innerHTML = `
+  <div class="page-head">
+    <div><h1>Live Identity Stamping Simulator</h1><p>A legacy transaction request is enriched with canonical IDs from the Nexus Registry before it is persisted. Original fields are preserved. Choose a scenario, then run it.</p></div>
+    <div class="right" style="flex-direction:column;align-items:flex-end">${[['identity', 'Identity resolution'], ['gate', 'Authorization, entitlements & routing']].map(([grp, label]) => `<div class="seg-group"><span class="seg-label">${label}</span><div class="seg" role="tablist" aria-label="${label}">
+      ${Object.entries(SCEN).filter(([, v]) => (v.group || 'identity') === grp).map(([k, v]) => `<button role="tab" aria-selected="${s.scenario === k}" class="${s.scenario === k ? 'active' : ''}" data-action="scenario" data-s="${k}" ${s.status === 'running' ? 'disabled' : ''}>${v.label}</button>`).join('')}
+    </div></div>`).join('')}</div>
+  </div>
+
+  <div class="card"><div class="pipe">
+    ${STAGES.map((st, i) => `${i ? `<div class="connector ${stageCls(i - 1) === 'done' && ['done', 'fail', 'active'].includes(stageCls(i)) ? 'done' : ''}"></div>` : ''}
+      <div class="stage ${stageCls(i)}"><div class="b">${stageCls(i) === 'done' ? ic('check', 13, 2.6) : stageCls(i) === 'fail' ? ic('x', 13, 2.6) : i + 1}</div><div class="t">${st[0]}<span>${st[1]}</span></div></div>`).join('')}
+  </div></div>
+
+  <div class="card run-bar">
+    <div class="desc">Source <span class="mono">${sc.src}</span> ${describe(pre.src)}. Destination <span class="mono">${sc.dst}</span> ${describe(pre.dst)}.
+      <span class="muted">Caller token tenant <span class="mono">${sc.caller || 'TNT-NA-01'}</span> · rail ${sc.rail || 'ACH'} · ${sc.party === 'destination' ? 'destination' : 'source'} is the party. Live registry state (r${S.regVersion}). Decisions made in the Exception Queue change what these scenarios return.</span></div>
+    <button class="btn btn-primary btn-lg" data-action="sim-run" ${s.status === 'running' ? 'disabled' : ''}>${s.status === 'running' ? '<span class="spinner" style="width:16px;height:16px;border-top-color:#fff"></span>Processing…' : `${ic('play', 16)}Simulate Payload Injection`}</button>
+  </div>
+
+  <div class="panes">
+    <div class="card pane">
+      <div class="card-head"><h2>${ic('arrow')}Incoming request</h2><div class="right"><span class="pill sm">Legacy · no canonical IDs</span></div></div>
+      <div class="pane-sub"><span class="mono">POST /v2/transactions</span> · from ${sc.route || 'ach.batch.east'} · bearer token for ${sc.caller || 'TNT-NA-01'}</div>
+      <div class="code">${jsonHTML(input)}</div>
+    </div>
+    <div class="card pane">
+      <div class="card-head"><h2>${ic('bolt')}Processed output</h2><div class="right">${outPill}</div></div>
+      <div class="pane-sub">${s.status === 'done' ? (res.kind === 'ok' ? '<span class="mono">transaction_store.insert</span> · simulated persistence' : '<span class="mono">held</span> · not persisted, not forwarded') : 'Output appears after the simulation runs'}</div>
+      ${s.status === 'done' ? `<div class="code">${jsonHTML(res.output)}</div>
+        <div class="legend-row"><span><i style="background:var(--card-2);border-color:var(--line-2)"></i>Original field</span>${res.kind === 'ok' ? `<span><i style="background:var(--ok-bg);border-color:var(--ok)"></i>Injected canonical ID</span><span><i style="background:var(--action-bg);border-color:var(--action-line)"></i>Injected metadata</span>` : `<span><i style="background:var(--warn-bg);border-color:var(--warn)"></i>Resolution status (no IDs injected)</span>`}</div>` :
+        `<div class="code-empty">${s.status === 'running' ? `<div class="spinner"></div><span>Resolving identities through the Nexus Registry…</span>` : `${ic('play', 20)}<span>Click “Simulate Payload Injection”</span>`}</div>`}
+    </div>
+  </div>
+  ${s.status === 'done' ? traceHTML(res) : ''}
+  ${s.status === 'done' ? `<div class="card"><div class="card-head"><h2>${ic('shield')}Validation and persistence</h2><div class="right"><span class="sim-tag">Simulated</span></div></div>${checksHTML(res)}</div>` : ''}
+  ${eventsHTML()}`;
+}
+
+async function runSim() {
+  if (S.sim.status === 'running') return;
+  const sc = SCEN[S.sim.scenario];
+  S.sim.status = 'running'; S.sim.result = null; S.sim.stage = 0; renderSim();
+  const res = processPayload(sc);
+  const last = res.kind === 'ok' ? STAGES.length - 1 : res.failed.stage;
+  for (let i = 0; i <= last; i++) { S.sim.stage = i; if (S.view === 'simulator') renderSim(); await sleep(i === 0 ? 180 : 110); }
+  S.sim.status = 'done'; S.sim.result = res;
+  const txnId = res.input[0][1];
+  if (res.kind === 'ok') {
+    S.txns.unshift({ id: txnId, sys: sc.ledgerSys || 'ACH', ts: nowStr(), src_legacy: sc.src, dst_legacy: sc.dst, src_can: res.src.canonical, dst_can: res.dst.canonical, amount: sc.amount, ccy: 'USD', status: 'Pending', settle: 'Pending', stamped: true, fresh: true });
+    toast('Identity stamped deterministically in 14ms (simulated).', `${res.src.canonical} → ${res.dst.canonical} · ${txnId} persisted · routed to ${res.gate.provider.name}`);
+    logAudit({ actor: 'Nexus Bridge', kind: 'sys', ev: 'Identity stamped', ent: txnId, detail: `${sc.src} → ${res.src.canonical}, ${sc.dst} → ${res.dst.canonical}. ${res.input.length} legacy fields preserved.` });
+    complete('stamp');
+    if (S.sim.scenario === 'coffee') complete('route');
+  } else if (res.kind === 'gate') {
+    const g = res.gate;
+    toast(g.fail.toast, g.fail.sub, 'bad');
+    logAudit({ actor: 'Nexus Bridge', kind: 'sys', ev: 'Pre-flight blocked', ent: txnId, detail: `${g.fail.detail} Not sent to the Unified Transaction API.` });
+    if (S.sim.scenario === 'pending') complete('gate');
+  } else {
+    const ex = res.failed.r.ex;
+    if (ex && !ex.heldTxns.includes(txnId)) ex.heldTxns.push(txnId);
+    toast(res.failed.r.status === 'not_found' ? 'Stamping blocked: no registry mapping.' : res.failed.r.status === 'conflict' ? 'Stamping blocked: conflicting identity.' : 'Stamping blocked: ambiguous mapping.', `${res.failed.id} unresolved · transaction not persisted`, res.failed.r.status === 'not_found' ? 'bad' : 'warn');
+    logAudit({ actor: 'Nexus Bridge', kind: 'sys', ev: 'Stamping blocked', ent: txnId, detail: `${res.failed.id} ${describe(res.failed.r)}. Not persisted.${res.exRef ? ` Held against ${res.exRef}.` : ''}` });
+    if (S.sim.scenario === 'missing') complete('missing');
+  }
+  if (S.view === 'simulator') renderSim();
+}
+
+/* ============ Identity layer: authorization, entitlement gate, provider translation ============ */
+const RAILS = ['ACH', 'Card', 'Payout'];
+function providerFor(ent, rail) {
+  const pv = ent.providers || {};
+  return rail === 'Card'
+    ? { name: 'MXM', kind: 'MXM merchant ID', id: pv.mxm, use: 'card acquiring' }
+    : { name: 'Passport Banking PaaS', kind: 'Passport account ID', id: pv.passport, use: rail === 'Payout' ? 'payouts' : 'ACH origination' };
+}
+function gateCheck(sc, src, dst) {
+  const partyRes = sc.party === 'destination' ? dst : src;
+  const pe = S.entities[partyRes.canonical];
+  const caller = sc.caller || 'TNT-NA-01', rail = sc.rail || 'ACH';
+  const g = { party: pe, partyLegacy: sc.party === 'destination' ? sc.dst : sc.src, caller, rail };
+  if (pe.tenant !== caller) {
+    g.fail = { stage: 3, at: 'tenant_authorization', code: 'tenant_access_denied', short: 'tenant denied',
+      detail: `Caller tenant ${caller} cannot act on ${pe.id}, which belongs to ${pe.tenant}.`,
+      toast: 'Blocked: this caller is not authorized for the entity.', sub: `${caller} → ${pe.id} (owned by ${pe.tenant})` };
+    return g;
+  }
+  const status = pe.status !== 'Active' ? 'PENDING' : (pe.products?.[rail] || 'NOT_ENROLLED');
+  if (status !== 'ACTIVE') {
+    g.fail = { stage: 4, at: 'entitlement_check', code: `entitlement_${status.toLowerCase()}`, short: `${rail} ${status.toLowerCase().replace('_', ' ')}`, status,
+      detail: `${rail} is ${status} for ${pe.id}. ${pe.gateNote || ''}`.trim(),
+      toast: `Blocked at pre-flight: ${rail} is ${status} for ${pe.name}.`, sub: 'Stopped before the Unified Transaction API' };
+    return g;
+  }
+  const prov = providerFor(pe, rail);
+  if (!prov.id) {
+    g.fail = { stage: 5, at: 'provider_resolution', code: 'no_provider_account', short: 'no provider ID',
+      detail: `${pe.id} has no ${prov.kind} for ${prov.use}.`, toast: 'Blocked: no provider identity for this rail.', sub: `${pe.id} · ${prov.name}` };
+    return g;
+  }
+  g.provider = prov;
+  return g;
+}
+function publishEvent(topic, ent, detail) { S.events.unshift({ t: nowStr(), topic, ent, detail }); S.cacheVersion++; }
+function techBlock(key, items) {
+  return `<details class="tech" data-keep="${key}" ${S.keepOpen?.[key] ? 'open' : ''}><summary>${ic('chev', 13, 2)}Technical details</summary>
+    <div class="tech-body">${items.map(([h, line, pre]) => `<div class="tech-item"><h4>${h}</h4>${line ? `<p class="${/^(GET|POST|redis) /.test(line) ? 'mono' : ''}">${esc(line)}</p>` : ''}${pre ? `<pre class="snip">${esc(pre)}</pre>` : ''}</div>`).join('')}</div></details>`;
+}
+const prodChips = (ent, rail) => RAILS.filter(r => ent.products && r in ent.products).map(r => { const v = ent.products[r];
+  return `<span class="prod ${v === 'ACTIVE' ? 'on' : v === 'NOT_ENROLLED' ? 'no' : 'off'} ${r === rail ? 'req' : ''}" title="${r}: ${v}">${r} ${v === 'ACTIVE' ? '✓' : v === 'NOT_ENROLLED' ? '—' : '!'}</span>`; }).join('');
+
+/* Decision trace shown after each simulation run */
+function traceHTML(res) {
+  const sc = res.sc, rows = [];
+  const R = (state, l, v, cls = '') => rows.push(`<div class="chain-row ${state} ${cls}"><span class="ci">${state === 'ok' ? ic('check', 12, 2.6) : state === 'fail' ? ic('x', 12, 2.6) : ''}</span><span class="l">${l}</span><span class="v">${v}</span></div>`);
+  let tech;
+  if (res.kind === 'blocked') {
+    R('ok', 'Legacy ID', `<span class="mono">${res.failed.id}</span><span class="muted">${sysOf(res.failed.id)}</span>`);
+    R('fail', 'SES entity', `Unresolved · ${describe(res.failed.r)}`);
+    ['Merchant', 'Tenant access', 'Status', 'Products', 'Provider routing', 'Unified Transaction API'].forEach(l => R('skip', l, 'Not reached'));
+    R('fail', 'Result', 'Transaction blocked · identity unresolved', 'final');
+    tech = [['Registry lookup', `GET /v1/identity/resolve?id=${res.failed.id}`, JSON.stringify({ status: 'unresolved', reason: res.reason, exception_id: res.exRef || null }, null, 2)],
+            ['Cache (Redis)', `redis GET nb:map:${res.failed.id}`, 'miss · no unique mapping cached']];
+  } else {
+    const g = res.gate, pe = g.party, f = g.fail?.stage || 0, before = n => f && f < n;
+    R('ok', 'Legacy ID', `<span class="mono">${g.partyLegacy}</span><span class="muted">${sysOf(g.partyLegacy)} · ${sc.party === 'destination' ? 'destination' : 'source'} party</span>`);
+    R('ok', 'SES entity', `<span class="mono">${pe.id}</span>`);
+    R('ok', 'Merchant', esc(pe.name));
+    R(f === 3 ? 'fail' : 'ok', 'Tenant access', f === 3 ? `Denied · caller ${g.caller}, owner ${pe.tenant}` : `Caller <span class="mono">${g.caller}</span> owns this entity`);
+    R(before(4) ? 'skip' : pe.status === 'Active' ? 'ok' : 'fail', 'Status', before(4) ? 'Not reached' : pe.status === 'Active' ? 'ACTIVE' : 'PENDING');
+    R(before(4) ? 'skip' : f === 4 ? 'fail' : 'ok', 'Products', before(4) ? 'Not reached' : `${prodChips(pe, g.rail)}<span class="muted">${g.rail} requested${f === 4 ? ` · ${g.fail.status}` : ''}</span>`);
+    R(before(5) ? 'skip' : f === 5 ? 'fail' : 'ok', 'Provider routing', before(5) ? 'Not reached' : f === 5 ? g.fail.detail : `${g.provider.name} · <span class="mono">${g.provider.id}</span>`);
+    R(f ? 'skip' : 'ok', 'Unified Transaction API', f ? 'Not called' : `<span class="mono">POST /v1/transactions</span>`);
+    R(f ? 'fail' : 'ok', 'Result', f ? `Transaction blocked at ${g.fail.at.replace('_', ' ')}` : 'Transaction proceeds', 'final');
+    const leg = (side) => { const r = side === 'source' ? res.src : res.dst; const isParty = (sc.party || 'source') === side;
+      return { [isParty ? 'party' : 'counterparty']: { tenant_entity_id: r.canonical } }; };
+    const pv = pe.providers || {};
+    tech = [
+      ['Caller token', 'Claims extracted from the bearer token', JSON.stringify({ tenantId: g.caller, ownerId: `usr_${g.caller.slice(-2)}ops`, scope: ['transactions:write'] }, null, 2)],
+      ['Tenant validation (SES)', `GET /v1/entities/${pe.id}?tenantId=${g.caller}`, f === 3 ? '403 Forbidden · entity owned by ' + pe.tenant : `200 OK · owner ${pe.tenant}`],
+      ['Entitlement lookup', `GET /v1/businesses/${pe.id}/locations/${pe.location || ':id'}/services`, f === 3 ? 'not called' : JSON.stringify({ status: pe.status === 'Active' ? 'ACTIVE' : 'PENDING', services: RAILS.filter(r => pe.products && r in pe.products).map(r => ({ rail: r, status: pe.products[r] })) }, null, 2)],
+      ['Provider translation', 'One canonical ID, provider IDs underneath', `${pe.id} → ${pv.mxm || 'none'}  (MXM merchant ID · card / ACH acquiring)\n${pe.id} → ${pv.passport || 'none'}  (Passport / Banking PaaS · payouts, wires, ACH origination)`],
+      ['Unified Transaction API request', f ? 'Not sent. Blocked by Nexus Bridge pre-flight.' : 'POST /v1/transactions', JSON.stringify({ source: leg('source'), destination: leg('destination'), rail: g.rail.toLowerCase(), amount: sc.amount, currency: 'USD', ...(g.provider ? { provider_ref: { provider: g.provider.name, [g.provider.kind.includes('MXM') ? 'merchant_id' : 'account_id']: g.provider.id } } : {}) }, null, 2)],
+      ['Cache (Redis)', `redis GET nb:ent:${pe.id}`, `hit · cache v${S.cacheVersion}${(() => { const ev = S.events.find(e => e.ent === pe.id); return ev ? `\nlast update: ${ev.topic}` : ''; })()}`]
+    ];
+  }
+  return `<div class="card"><div class="card-head"><h2>${ic('link')}Nexus Bridge decision</h2><span class="muted" style="font-size:12.5px">identity · authorization · entitlement · routing</span><div class="right"><span class="sim-tag">Simulated</span></div></div>
+    <div class="chain">${rows.join('')}</div>${techBlock('trace', tech)}</div>`;
+}
+
+/* SES lifecycle events (Kafka) updating the Nexus Bridge cache (Redis) */
+function eventsHTML() {
+  const b = S.entities['SES-10311'], c = S.entities['SES-10294'];
+  return `<details class="card tech-card" data-keep="events" ${S.keepOpen?.events ? 'open' : ''}>
+    <summary>${ic('chev', 13, 2)}<b>SES lifecycle events</b><span>Kafka → Nexus Bridge cache (Redis) · cache v${S.cacheVersion}</span><span class="pill sm" style="margin-left:auto">${S.events.length} events</span></summary>
+    <div class="ev-actions"><span class="muted">Publish a simulated SES event:</span>
+      <button class="btn btn-sm" data-action="ev-onboard" ${b.status === 'Active' ? 'disabled' : ''}>${b.status === 'Active' ? 'Brightline Bakery onboarded' : 'Complete Brightline Bakery onboarding'}</button>
+      <button class="btn btn-sm" data-action="ev-hold">${c.products.Card === 'ACTIVE' ? 'Place risk hold on Acme Coffee card' : 'Release Acme Coffee risk hold'}</button></div>
+    <div>${S.events.slice(0, 8).map(ev => `<div class="ev"><span class="num muted">${ev.t}</span><span class="topic">${ev.topic}</span><span>${esc(ev.detail)}</span><span class="id">${ev.ent}</span></div>`).join('')}</div>
+  </details>`;
+}
+
+/* Entity 360: product entitlements and provider identities */
+function routingHTML(e) {
+  const prods = RAILS.filter(r => e.products && r in e.products);
+  const pv = e.providers || {};
+  const head = `<div class="card-head"><h2>${ic('shield')}Products &amp; provider routing</h2><div class="right"><span class="pill sm">Tenant <span class="mono">${e.tenant}</span></span><span class="sim-tag">Simulated</span></div></div>`;
+  if (!prods.length && !pv.mxm && !pv.passport) return `<div class="card">${head}<div class="card-body muted" style="font-size:13px">Products are enabled on each operating entity, not at group level.</div></div>`;
+  const pill = v => v === 'ACTIVE' ? 'ok' : v === 'NOT_ENROLLED' ? '' : 'warn';
+  const last = S.events.find(ev => ev.ent === e.id);
+  const prow = (label, id, use) => `<div class="rrow"><span class="id">${e.id}</span>${ic('arrow', 13)}<span>${label}</span><span class="r">${id ? `<span class="id">${id}</span>` : '<span class="faint">Not provisioned</span>'}</span><span class="sub">${use}</span></div>`;
+  return `<div class="card">${head}
+    <div class="route-grid">
+      <div><div class="sec-title">Product entitlements · checked before every transaction</div>
+        ${prods.map(r => `<div class="rrow"><b style="font-weight:600;min-width:60px">${r}</b><span class="pill sm ${pill(e.products[r])}">${e.products[r].replace('_', ' ')}</span><span class="r muted" style="font-size:12px">${e.products[r] === 'ACTIVE' && e.status === 'Active' ? 'Transactions allowed' : e.products[r] === 'NOT_ENROLLED' ? 'Not enrolled' : 'Blocked before orchestration'}</span></div>`).join('')}
+        ${e.gateNote ? `<p class="muted" style="font-size:12px;margin-top:8px">${esc(e.gateNote)}</p>` : ''}</div>
+      <div><div class="sec-title">One canonical ID, provider IDs underneath</div>
+        ${prow('MXM merchant ID', pv.mxm, 'Card and ACH acquiring')}
+        ${prow('Passport / Banking PaaS', pv.passport, 'Payouts, wires and ACH origination')}</div>
+    </div>
+    ${techBlock('ent-' + e.id, [
+      ['Entitlement lookup', `GET /v1/businesses/${e.id}/locations/${e.location || ':id'}/services`, JSON.stringify({ status: e.status === 'Active' ? 'ACTIVE' : 'PENDING', services: prods.map(r => ({ rail: r, status: e.products[r] })) }, null, 2)],
+      ['Cache (Redis)', `redis GET nb:ent:${e.id}`, `hit · cache v${S.cacheVersion}${last ? `\nlast update: ${last.topic}\n${last.detail}` : ''}`]
+    ])}
+  </div>`;
+}
+
+/* Overview: where Nexus Bridge sits */
+function bridgeHTML() {
+  const e = S.entities['SES-10294'];
+  const steps = [
+    ['1', 'Fragmented legacy IDs', '<div class="ids"><span class="pill sm mono">MXM-84721</span><span class="pill sm mono">Passport-K3F9</span></div>', 'Each system has its own ID for the merchant'],
+    ['2', 'Nexus Bridge', '', 'Identity · authorization · entitlements · routing', 'hub'],
+    ['3', 'One canonical identity', '<span class="id">SES-10294</span>', esc(e.name)],
+    ['4', 'Validation', '', 'Tenant access and product entitlements checked pre-flight'],
+    ['5', 'Correct provider', '', 'MXM for card and ACH acquiring. Passport Banking PaaS for payouts.'],
+    ['6', 'Payment', '', 'Unified Transaction API sends it to the provider']
+  ];
+  return `<div class="card">
+    <div class="card-head"><h2>${ic('link')}Where Nexus Bridge sits</h2><div class="right"><button class="btn btn-sm btn-primary" data-action="run-example" data-s="coffee">${ic('play', 13)}Run the Acme Coffee example</button><button class="btn btn-sm" data-action="run-example" data-s="pending">See a blocked merchant</button></div></div>
+    <div class="bridge">${steps.map(([n, h, body, p, cls = '']) => `<div class="bstep ${cls}"><span class="n">${n}</span><h3>${h}</h3>${body}<p>${p}</p></div>`).join('')}</div>
+    ${techBlock('bridge', [
+      ['Tenant scoping (security boundary)', 'Caller token → extract tenantId / ownerId → validate against SES → authorize entity access → continue. One tenant can never act on another tenant\'s entities.', null],
+      ['Entitlement gate', 'GET /v1/businesses/:id/locations/:id/services', 'Requested rail must be ACTIVE (ACH · Card · Payout).\nPENDING, missing onboarding or under review\n→ blocked before transaction orchestration.'],
+      ['Unified Transaction API legs', 'Symmetric source and destination legs. Each leg carries a party or counterparty, given as an SES ID or as an inline entity that Nexus Bridge resolves at runtime with the same rules.', JSON.stringify({ source: { party: { tenant_entity_id: 'SES-10294' } }, destination: { counterparty: { entity: { legal_name: 'Beta Logistics Inc', tax_id: '••-•••7310' } } } }, null, 2)],
+      ['Provider translation', 'Nexus Bridge sits in front of the existing providers. They are not rebuilt.', 'SES-10294 → MXM-84721      card / ACH acquiring\nSES-10294 → PBA-10294-01   payouts, wires, ACH origination'],
+      ['Lifecycle events (Kafka)', 'SES publishes changes; Nexus Bridge consumes them and refreshes its cache.', 'ses.entity.created / ses.entity.updated\nses.onboarding.status_changed\nses.entitlement.changed\nses.risk.status_changed'],
+      ['Transaction-time cache (Redis)', 'Read on every transaction so checks stay fast.', 'nb:map:{legacy_id}  → canonical ID\nnb:ent:{ses_id}     → tenant, status,\n                      entitlements, provider IDs'],
+      ['Shared canonical identity', 'KYC/KYB, entity deduplication, risk profiles and payment lifecycle tracking all key on the same SES ID.', null]
+    ])}
+  </div>`;
+}
+
+/* ============ Exception Queue ============ */
+const TYPE = { conflict: ['bad', 'Conflicting identity'], ambiguous: ['warn', 'Ambiguous mapping'], unmapped: ['warn', 'Unmapped identifier'] };
+const statusPill = x => x.status === 'ESCALATED' ? '<span class="pill sm info caps">Escalated</span>' : '<span class="pill sm warn caps">Unresolved</span>';
+function renderQueue() {
+  const open = S.exceptions, closed = S.closed, tab = S.queueTab;
+  $('#view-exceptions').innerHTML = `
+  <div class="page-head">
+    <div><h1>Exception Queue</h1><p>Identity records that cannot be resolved safely wait here. Nothing is merged automatically. A reviewer decides, and every decision updates the registry and the activity log.</p></div>
+    <div class="right"><div class="tabs" role="tablist"><button role="tab" class="${tab === 'open' ? 'active' : ''}" data-action="qtab" data-t="open">Open (${open.length})</button><button role="tab" class="${tab === 'closed' ? 'active' : ''}" data-action="qtab" data-t="closed">Resolved (${closed.length})</button></div></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>${ic('alert')}${tab === 'open' ? 'Unresolved Identity Mappings - Action Required' : 'Resolved this session'}</h2><div class="right"><span class="sim-tag">Simulated records</span></div></div>
+    ${tab === 'open' ? (open.length ? `<div class="table-wrap"><table>
+      <thead><tr><th>Received date</th><th>Legacy ID</th><th>Incoming entity name</th><th>Potential SES match</th><th>Exception type</th><th>Reason</th><th>Review status</th><th class="r">Action</th></tr></thead>
+      <tbody>${open.map(x => `<tr data-row="${x.id}">
+        <td class="num">${x.received}<span class="held-n faint" style="color:var(--faint)">${x.id}</span></td>
+        <td><span class="id">${x.legacy}</span></td>
+        <td style="color:var(--text);font-weight:500">${esc(x.name)}</td>
+        <td>${x.candidates.length ? x.candidates.map(c => `<span class="id" style="display:block">${c}</span>`).join('') : '<span class="faint">None</span>'}</td>
+        <td><span class="pill sm ${TYPE[x.type][0]}">${TYPE[x.type][1]}</span></td>
+        <td class="reason">${esc(x.reason)}${x.heldTxns.length ? `<span class="held-n">${x.heldTxns.length} transaction${x.heldTxns.length > 1 ? 's' : ''} held</span>` : ''}</td>
+        <td>${statusPill(x)}</td>
+        <td class="r"><button class="btn ${x.id === 'EX-3021' ? 'btn-primary' : ''}" data-action="review" data-ex="${x.id}">Review</button></td></tr>`).join('')}</tbody>
+    </table></div>` : `<div class="empty-state"><div class="ic-wrap ok">${ic('check', 20)}</div><h2>The queue is clear</h2><p>Every identifier is mapped, isolated as its own entity, or rejected.</p></div>`)
+    : (closed.length ? `<div class="table-wrap"><table>
+      <thead><tr><th>Closed</th><th>Exception</th><th>Legacy ID</th><th>Entity name</th><th>Type</th><th>Outcome</th><th class="r"></th></tr></thead>
+      <tbody>${closed.map(x => `<tr><td class="num">${x.closedAt}</td><td class="id">${x.id}</td><td class="id">${x.legacy}</td><td>${esc(x.name)}</td><td><span class="pill sm ${TYPE[x.type][0]}">${TYPE[x.type][1]}</span></td><td><span class="pill sm ${x.outcomeCls}">${x.outcome}</span></td>
+        <td class="r"><button class="btn btn-sm" data-action="resolve" data-q="${x.legacy}">Search ${x.legacy}</button></td></tr>`).join('')}</tbody></table></div>`
+      : `<div class="empty-state"><div class="ic-wrap">${ic('list', 20)}</div><p>No exceptions resolved yet. Decisions you make appear here.</p></div>`)}
+  </div>`;
+}
+
+function openReview(id) {
+  const x = S.exceptions.find(e => e.id === id);
+  if (!x) { const c = S.closed.find(e => e.id === id); toast(c ? `${id} is already resolved: ${c.outcome}.` : `${id} was not found.`, '', 'info'); return; }
+  S.openEx = id; S.confirm = null;
+  if (S.view !== 'exceptions') { S.queueTab = 'open'; go('exceptions'); }
+  renderSheet();
+  const sheet = $('#sheet'), scrim = $('#scrim');
+  sheet.hidden = false; scrim.hidden = false;
+  requestAnimationFrame(() => { sheet.classList.add('open'); scrim.classList.add('open'); });
+  setTimeout(() => sheet.querySelector('.sheet-foot .btn:not([disabled])')?.focus(), 250);
+  if (id === 'EX-3021') complete('review');
+}
+function closeReview() {
+  const sheet = $('#sheet'), scrim = $('#scrim');
+  sheet.classList.remove('open'); scrim.classList.remove('open');
+  S.openEx = null; S.confirm = null;
+  setTimeout(() => { if (!S.openEx) { sheet.hidden = true; scrim.hidden = true; } }, 280);
+}
+const approvable = x => x.candidates.length === 1 && x.evidence.every(e => e[1]);
+
+function renderSheet() {
+  const x = S.exceptions.find(e => e.id === S.openEx); if (!x) return;
+  const stLbl = { match: ['check', 'Match'], similar: ['info', 'Similar'], conflict: ['x', 'Conflict'], missing: ['alert', 'Missing'], split: ['alert', 'Matches one'], info: ['info', 'Context'] };
+  const one = x.candidates.length === 1, ok = approvable(x);
+  const rule = {
+    conflict: ['bad', 'Rule 3 · Conflicting identity', 'A hard identity attribute differs from the existing entity. A similar name is not enough, so Nexus Bridge routes the record here and never merges it.'],
+    ambiguous: ['', 'Rule 4 · Ambiguous mapping', 'The identifier maps to more than one entity. Nexus Bridge will not pick one arbitrarily, so the record stays unresolved.'],
+    unmapped: ['', 'Rule 2 · Missing mapping', 'The identifier has no entry in the Nexus Registry. Nexus Bridge never invents a canonical ID to make a transaction look successful.']
+  }[x.type];
+  const failing = x.evidence.find(e => !e[1]);
+  const cand = x.candidates[0];
+  let foot;
+  if (S.confirm === 'approve') {
+    foot = `<div class="guard"><p><b>Approve mapping <span class="mono">${x.legacy}</span> → <span class="mono">${cand}</span>?</b> The registry gains this mapping, and future transactions using ${x.legacy} will be stamped with ${cand}.</p>
+      <div class="row"><button class="btn btn-primary" data-action="approve-confirm">${ic('check', 14, 2.2)}Confirm mapping</button><button class="btn btn-ghost" data-action="confirm-cancel">Cancel</button></div></div>`;
+  } else if (S.confirm === 'reject') {
+    foot = `<div class="guard"><p><b>Reject the proposed mapping${one ? ` to <span class="mono">${cand}</span>` : 's'}?</b> ${x.legacy} stays unresolved in the registry, and transactions that use it will keep being blocked.</p>
+      <div class="row"><button class="btn btn-danger" data-action="reject-confirm">Reject mapping</button><button class="btn btn-ghost" data-action="confirm-cancel">Cancel</button></div></div>`;
+  } else {
+    const approveBtn = `<button class="btn ${ok ? 'btn-primary' : ''}" data-action="approve" ${ok ? '' : 'disabled'} title="${ok ? '' : 'Not permitted by the mapping rules'}">${ic('link', 14)}Approve mapping${one ? ` to ${cand}` : ''}</button>`;
+    const createBtn = `<button class="btn ${ok ? '' : 'btn-primary'}" data-action="isolate">${ic('plus', 14, 2.2)}Create New Independent Entity</button>`;
+    foot = `<div class="row">${ok ? approveBtn + createBtn : createBtn + approveBtn}</div>
+      <div class="row"><button class="btn btn-sm" data-action="escalate" ${x.status === 'ESCALATED' ? 'disabled' : ''}>${ic('up', 13)}${x.status === 'ESCALATED' ? 'Escalated' : 'Escalate for manual review'}</button>
+        ${x.candidates.length ? `<button class="btn btn-sm btn-danger" data-action="reject">${ic('ban', 13)}Reject proposed mapping</button>` : ''}
+        <button class="btn btn-sm btn-ghost" data-action="close">Leave for further review</button></div>
+      <p class="hint">${ok ? 'The mapping rules are satisfied, so approval is available.' : `Approval is not available: ${failing ? `${failing[0].toLowerCase()} (${failing[2]})` : 'rules not met'}.`} Creating a new entity gives ${x.legacy} its own canonical ID and links nothing else.</p>`;
+  }
+  $('#sheet').innerHTML = `
+  <div class="sheet-head">
+    <div style="min-width:0">
+      <h2 id="sheet-title">Review ${x.id} <span class="pill sm ${TYPE[x.type][0]}">${TYPE[x.type][1]}</span> ${statusPill(x)}</h2>
+      <p>Received ${x.received} · <span class="mono">${x.legacy}</span> · ${esc(x.reason)}</p>
+    </div>
+    <button class="btn btn-ghost btn-icon" style="margin-left:auto" data-action="close" aria-label="Close">${ic('x', 16)}</button>
+  </div>
+  <div class="sheet-body">
+    <div class="why ${rule[0]}"><div class="h">${ic(x.type === 'conflict' ? 'ban' : 'alert', 15)}Why automatic resolution was prevented · ${rule[1]}</div><p>${rule[2]}</p></div>
+
+    <div><div class="sec-title">Incoming record vs existing SES record${x.candidates.length > 1 ? 's' : ''}</div>
+    <div class="cmp-table"><div class="table-wrap"><table>
+      <thead><tr><th>Field</th><th>Incoming record<span class="id">${x.legacy}</span><span class="nm2">${esc(x.name)}</span></th>
+        ${x.candidates.length ? x.candidates.map(c => `<th>Existing SES record<span class="id">${c}</span><span class="nm2">${esc(S.entities[c].name)}</span></th>`).join('') : '<th>Existing SES record<span class="nm2">No matching entity</span></th>'}
+        ${one ? '<th></th>' : ''}</tr></thead>
+      <tbody>${x.fields.map(([f, a, bs, st]) => `<tr class="${st === 'conflict' || st === 'missing' || st === 'split' ? st : ''}"><td>${f}</td><td>${esc(a)}</td>
+        ${x.candidates.length ? bs.map(b => `<td class="${!one && b === a ? 'eq' : ''}">${esc(b)}</td>`).join('') : '<td class="faint">—</td>'}
+        ${one ? `<td><span class="st ${st}">${ic(stLbl[st][0], 12, 2.2)}${stLbl[st][1]}</span></td>` : ''}</tr>`).join('')}</tbody>
+    </table></div></div></div>
+
+    <div><div class="sec-title">Mapping rules check</div>
+    <div class="evid">${x.evidence.map(([t, pass, d]) => `<div class="row ${pass ? 'ok' : 'no'}"><span class="ci">${ic(pass ? 'check' : 'x', 12, 2.6)}</span><span>${t}</span><span class="d">${esc(d)}</span></div>`).join('')}
+      <div class="verdict ${ok ? 'ok' : 'no'}">${ok ? 'All rules pass. A reviewer may approve this mapping.' : 'Rules not met. Approving a mapping is not permitted.'}</div></div></div>
+
+    <div class="note"><div class="h">${ic('note', 15)}Review note</div><p>${esc(x.note)}</p>
+      ${x.similarity != null ? `<div class="suppl"><span>Name similarity ${x.similarity}%</span><span class="bar"><i style="width:${x.similarity}%"></i></span><span>Supplementary review information only. Never used to approve or merge.</span></div>` : ''}</div>
+
+    ${x.heldTxns.length ? `<div class="banner warn">${ic('alert', 16)}<div>${x.heldTxns.length} transaction${x.heldTxns.length > 1 ? 's are' : ' is'} blocked by this exception: <span class="mono">${x.heldTxns.join(', ')}</span></div></div>` : ''}
+    ${x.status === 'ESCALATED' ? `<div class="banner info">${ic('up', 16)}<div>Escalated to Risk Operations. The record stays unresolved until someone decides.</div></div>` : ''}
+  </div>
+  <div class="sheet-foot">${foot}</div>`;
+}
+
+/* ---- Exception actions ---- */
+function closeException(x, outcome, outcomeCls) {
+  S.closed.unshift({ ...x, outcome, outcomeCls, closedAt: nowStr() });
+  S.exceptions = S.exceptions.filter(e => e.id !== x.id);
+  S.regVersion++;
+}
+function animateRowOut(id, after) {
+  const row = document.querySelector(`tr[data-row="${id}"]`);
+  if (row) row.classList.add('leaving');
+  setTimeout(after, 360);
+}
+function actCreateEntity() {
+  const x = S.exceptions.find(e => e.id === S.openEx); if (!x) return;
+  const t = nowStr(), sys = sysOf(x.legacy);
+  S.registry = S.registry.filter(r => norm(r.legacy) !== norm(x.legacy));
+  S.registry.push({ legacy: x.legacy, canonical: x.newId, role: x.create.role, rule: `manual isolation (${x.id})`, since: 'Sep 28, 2026' });
+  const sa = `SA-${x.newId.split('-')[1]}-01`;
+  S.entities[x.newId] = {
+    id: x.newId, name: x.name, type: 'Operating entity', status: 'Active', parent: null, taxId: x.create.taxId, mcc: x.candidates[0] ? S.entities[x.candidates[0]].mcc : 'Pending classification',
+    region: x.candidates[0] ? S.entities[x.candidates[0]].region : 'US-East', since: 'Sep 28, 2026', tenant: 'TNT-NA-01',
+    subaccounts: [{ id: sa, name: sys === 'Passport' ? 'Onboarding' : 'Operating', ccy: x.create.ccy, avail: 0, pending: 0, legacy: x.legacy, instruments: [{ id: `PI-${x.newId.split('-')[1]}`, label: x.create.bank, kind: 'Bank account' }] }],
+    volume: { [x.create.ccy]: 0 }, isolatedFrom: { ex: x.id, from: x.candidates, t }
+  };
+  closeException(x, `New entity ${x.newId}`, 'ok');
+  closeReview();
+  animateRowOut(x.id, render);
+  toast('New SES Canonical ID generated for safe isolation.', `${x.legacy} → ${x.newId}`, 'ok', { label: 'View entity', q: x.legacy });
+  logAudit({ actor: 'You · Support Ops', kind: 'person', ev: 'Created independent entity', ent: x.newId, detail: `${x.legacy} isolated after review ${x.id}. Registry updated to r${S.regVersion}.${x.candidates.length ? ` Nothing linked to ${x.candidates.join(' or ')}.` : ''}` });
+  Object.assign(S.entities[x.newId], { products: { ACH: 'ACTIVE', Card: 'PENDING', Payout: 'PENDING' }, providers: { mxm: sys === 'MXM' ? x.legacy : null, passport: `PBA-${x.newId.split('-')[1]}-01` }, location: `LOC-${x.newId.split('-')[1]}-01` });
+  publishEvent('ses.entity.created', x.newId, `${x.name} · isolated by review ${x.id}`);
+  if (x.id === 'EX-3021') complete('isolate');
+}
+function actApprove() {
+  const x = S.exceptions.find(e => e.id === S.openEx); if (!x || !approvable(x)) { toast('Approval is not permitted for this record.', '', 'bad'); return; }
+  const cand = x.candidates[0];
+  S.registry.push({ legacy: x.legacy, canonical: cand, role: x.create.role, rule: `tax_id + bank_acct (approved ${x.id})`, since: 'Sep 28, 2026' });
+  closeException(x, `Mapped to ${cand}`, 'ok');
+  closeReview();
+  animateRowOut(x.id, render);
+  toast('Mapping approved and added to the Nexus Registry.', `${x.legacy} → ${cand} · r${S.regVersion}`, 'ok', { label: 'View entity', q: x.legacy });
+  logAudit({ actor: 'You · Support Ops', kind: 'person', ev: 'Mapping approved', ent: x.legacy, detail: `Linked to ${cand}. Evidence: exact Tax ID and settlement bank. Registry r${S.regVersion}.` });
+  publishEvent('ses.entity.updated', cand, `Mapping added: ${x.legacy} (review ${x.id})`);
+  complete('approve');
+}
+function actReject() {
+  const x = S.exceptions.find(e => e.id === S.openEx); if (!x) return;
+  S.registry = S.registry.filter(r => norm(r.legacy) !== norm(x.legacy));
+  closeException(x, 'Mapping rejected', 'bad');
+  closeReview();
+  animateRowOut(x.id, render);
+  toast('Proposed mapping rejected. The identifier stays unresolved.', `${x.legacy} · transactions using it remain blocked`, 'warn');
+  logAudit({ actor: 'You · Support Ops', kind: 'person', ev: 'Mapping rejected', ent: x.legacy, detail: `Rejected mapping to ${x.candidates.join(', ')} in ${x.id}. Registry r${S.regVersion}.` });
+}
+function actEscalate() {
+  const x = S.exceptions.find(e => e.id === S.openEx); if (!x) return;
+  x.status = 'ESCALATED';
+  renderSheet(); renderQueue(); renderNav();
+  toast('Escalated to Risk Operations for manual review.', `${x.id} stays unresolved`, 'info');
+  logAudit({ actor: 'You · Support Ops', kind: 'person', ev: 'Escalated', ent: x.legacy, detail: `${x.id} sent to Risk Operations. No registry change.` });
+}
+
+/* ============ Activity log ============ */
+function logAudit(e) { S.audit.unshift({ t: nowStr(), fresh: true, ...e }); if (S.view === 'activity') renderActivity(); }
+function renderActivity() {
+  const evPill = ev => /blocked|routed/i.test(ev) ? 'warn' : /rejected/i.test(ev) ? 'bad' : /escalated/i.test(ev) ? 'info' : 'ok';
+  $('#view-activity').innerHTML = `
+  <div class="page-head"><div><h1>Activity log</h1><p>Every resolution, stamp, block and reviewer decision in this session, with who made it and why.</p></div></div>
+  <div class="card"><div class="table-wrap"><table>
+    <thead><tr><th>Time</th><th>Actor</th><th>Event</th><th>Subject</th><th>Detail</th></tr></thead>
+    <tbody>${S.audit.map(a => `<tr class="${a.fresh ? 'fresh' : ''}"><td class="num">${a.t}</td>
+      <td><span class="actor"><i class="${a.kind === 'sys' ? 'sys' : ''}">${a.kind === 'sys' ? 'NB' : 'SO'}</i>${esc(a.actor)}</span></td>
+      <td><span class="pill sm ${evPill(a.ev)}">${a.ev}</span></td><td class="id">${a.ent}</td><td class="detail">${esc(a.detail)}</td></tr>`).join('')}</tbody>
+  </table></div></div>`;
+  S.audit.forEach(a => a.fresh = false);
+}
+
+/* ============ Toasts ============ */
+function toast(msg, sub = '', kind = 'ok', action) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + kind;
+  t.innerHTML = `${ic(kind === 'ok' ? 'check' : kind === 'info' ? 'info' : 'alert', 16, 2.2)}<div class="msg">${esc(msg)}${sub ? `<span>${esc(sub)}</span>` : ''}</div>${action ? `<button class="btn btn-sm">${action.label}</button>` : ''}`;
+  const dismiss = () => { t.classList.add('out'); setTimeout(() => t.remove(), 260); };
+  if (action) t.querySelector('button').onclick = () => { resolve(action.q); dismiss(); };
+  $('#toasts').appendChild(t);
+  setTimeout(dismiss, action ? 6500 : 4200);
+}
+
+/* ============ Demo guide ============ */
+const STEPS = [
+  { id: 'search', t: 'Resolve a merchant', d: 'Search MXM-77329', run: () => resolve('MXM-77329') },
+  { id: 'stamp', t: 'Stamp a transaction', d: 'Clean resolution scenario', run: () => { setScenario('clean'); go('simulator'); } },
+  { id: 'route', t: 'Route a card payment', d: 'Acme Coffee through the pre-flight gate', run: () => { setScenario('coffee'); go('simulator'); } },
+  { id: 'gate', t: 'See an entitlement block', d: 'Pending merchant stopped pre-flight', run: () => { setScenario('pending'); go('simulator'); } },
+  { id: 'missing', t: 'Try a missing mapping', d: 'Stamping is blocked, not faked', run: () => { setScenario('missing'); go('simulator'); } },
+  { id: 'review', t: 'Investigate the Tax ID conflict', d: 'Review EX-3021', run: () => openReview('EX-3021') },
+  { id: 'isolate', t: 'Create an independent entity', d: 'New SES ID for MXM-99110', run: () => openReview('EX-3021') },
+  { id: 'approve', t: 'Approve a permitted mapping', d: 'EX-3016 passes every rule', run: () => openReview('EX-3016') }
+];
+function complete(id) { if (!S.done[id]) { S.done[id] = true; if (!S.guideTouched) S.guideCollapsed = true; renderGuide(); } }
+function renderGuide() {
+  const n = STEPS.filter(s => S.done[s.id]).length, next = STEPS.find(s => !S.done[s.id]);
+  const g = $('#guide');
+  g.className = 'guide' + (S.guideCollapsed ? ' collapsed' : '');
+  g.innerHTML = `
+    <button class="guide-head" data-action="guide-toggle" aria-expanded="${!S.guideCollapsed}">${ic('play', 14)}<b>Demo script</b><span class="prog">${n} of ${STEPS.length}</span>${ic('chev', 14).replace('class="ic"', 'class="ic chev"')}</button>
+    ${next ? `<div class="guide-next"><span>Next: ${next.t}</span><button class="btn btn-primary go" data-action="guide-go" data-step="${next.id}">Go</button></div>` : ''}
+    <div class="guide-bar"><i style="width:${n / STEPS.length * 100}%"></i></div>
+    <ol class="guide-steps">${STEPS.map((s, i) => { const done = S.done[s.id], isNext = next && next.id === s.id;
+      return `<li class="gs ${done ? 'done' : ''} ${isNext ? 'next' : ''}"><span class="b">${done ? ic('check', 12, 2.6) : i + 1}</span><span class="t">${s.t}<span>${s.d}</span></span>${done ? '' : `<button class="btn ${isNext ? 'btn-primary' : 'btn-ghost'} go" data-action="guide-go" data-step="${s.id}">Go</button>`}</li>`; }).join('')}</ol>
+    <div class="guide-foot"><span>${next ? 'Next: ' + next.t : 'Demo complete'}</span><button class="btn btn-ghost go" data-action="reset">${ic('reset', 12)}Reset demo</button></div>`;
+}
+function setScenario(k) { S.sim.scenario = k; S.sim.status = 'idle'; S.sim.result = null; S.sim.stage = -1; }
+
+/* ============ Theme ============ */
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-app-theme', t);
+  $('#theme-btn').innerHTML = ic(t === 'dark' ? 'sun' : 'moon', 16);
+  try { localStorage.setItem('nb-theme', t); } catch (e) {}
+}
+
+/* ============ Render + events ============ */
+function render() {
+  VIEWS.forEach(v => $('#view-' + v).hidden = S.view !== v);
+  renderNav();
+  if (S.view === 'resolve') renderResolve();
+  if (S.view === 'simulator') renderSim();
+  if (S.view === 'exceptions') renderQueue();
+  if (S.view === 'activity') renderActivity();
+  renderGuide();
+  S.txns.forEach(t => t.fresh = false);
+}
+
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-action]'); if (!a || a.disabled) return;
+  const d = a.dataset;
+  switch (d.action) {
+    case 'nav': if (d.view === 'resolve' && S.view === 'resolve') S.resolve = { mode: 'overview' }; go(d.view); break;
+    case 'overview': S.resolve = { mode: 'overview' }; $('#q-top').value = ''; go('resolve'); break;
+    case 'resolve': resolve(d.q); break;
+    case 'hero-search': e.preventDefault(); resolve($('#q-hero').value); break;
+    case 'tree': S.treeOpen[d.key] = d.state !== '1'; complete('tree'); renderResolve(); break;
+    case 'tree-all': S.treeOpen = {}; S.treeDefault = d.v; renderResolve(); break;
+    case 'clear-filters': S.ledgerF = { sys: 'All', status: 'All', settle: 'All' }; renderResolve(); break;
+    case 'copy': {
+      const ok = () => toast('Canonical ID copied.', d.text), fail = () => toast('Copy is blocked here. Select the ID to copy it.', d.text, 'warn');
+      try { navigator.clipboard.writeText(d.text).then(ok, fail); } catch (err) { fail(); }
+      break;
+    }
+    case 'to-sim': setScenario('clean'); go('simulator'); break;
+    case 'scenario': setScenario(d.s); renderSim(); break;
+    case 'sim-run': runSim(); break;
+    case 'view-ledger': { const r = S.sim.result; if (r?.src?.canonical) { resolve(r.sc.src); setTimeout(() => document.getElementById('ledger')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); } break; }
+    case 'qtab': S.queueTab = d.t; renderQueue(); break;
+    case 'review': openReview(d.ex); break;
+    case 'close': closeReview(); break;
+    case 'isolate': actCreateEntity(); break;
+    case 'approve': S.confirm = 'approve'; renderSheet(); break;
+    case 'approve-confirm': actApprove(); break;
+    case 'reject': S.confirm = 'reject'; renderSheet(); break;
+    case 'reject-confirm': actReject(); break;
+    case 'confirm-cancel': S.confirm = null; renderSheet(); break;
+    case 'escalate': actEscalate(); break;
+    case 'theme': applyTheme(document.documentElement.getAttribute('data-app-theme') === 'dark' ? 'light' : 'dark'); break;
+    case 'guide-toggle': S.guideCollapsed = !S.guideCollapsed; S.guideTouched = true; renderGuide(); break;
+    case 'guide-go': STEPS.find(s => s.id === d.step).run(); break;
+    case 'run-example': setScenario(d.s); go('simulator'); break;
+    case 'ev-onboard': {
+      const b = S.entities['SES-10311'];
+      Object.assign(b, { status: 'Active', products: { ACH: 'ACTIVE', Card: 'ACTIVE', Payout: 'ACTIVE' }, gateNote: null });
+      b.providers.passport = 'PBA-10311-01';
+      publishEvent('ses.onboarding.status_changed', b.id, 'Brightline Bakery Co → ACTIVE · beneficial owner ID received');
+      publishEvent('ses.entitlement.changed', b.id, 'ACH, Card, Payout → ACTIVE · Banking PaaS account PBA-10311-01 provisioned');
+      toast('SES events applied to the Nexus Bridge cache.', `SES-10311 · cache v${S.cacheVersion}`, 'info');
+      logAudit({ actor: 'SES via Kafka', kind: 'sys', ev: 'Entitlement changed', ent: b.id, detail: 'Onboarding completed. ACH, Card and Payout are ACTIVE. Cache refreshed.' });
+      setScenario(S.sim.scenario); renderSim(); break;
+    }
+    case 'ev-hold': {
+      const c = S.entities['SES-10294'], hold = c.products.Card === 'ACTIVE';
+      c.products.Card = hold ? 'UNDER_REVIEW' : 'ACTIVE';
+      c.gateNote = hold ? 'Card processing is on a risk hold pending review.' : null;
+      publishEvent('ses.risk.status_changed', c.id, hold ? 'Card → UNDER_REVIEW · risk hold placed' : 'Card → ACTIVE · risk hold released');
+      toast('SES event applied to the Nexus Bridge cache.', `SES-10294 · Card ${c.products.Card} · cache v${S.cacheVersion}`, 'info');
+      logAudit({ actor: 'SES via Kafka', kind: 'sys', ev: hold ? 'Risk hold placed' : 'Risk hold released', ent: c.id, detail: `Card is now ${c.products.Card}. Cache refreshed.` });
+      setScenario(S.sim.scenario); renderSim(); break;
+    }
+    case 'reset': closeReview(); S = seed(); $('#q-top').value = ''; go('resolve'); toast('Demo reset to its starting state.', '', 'info'); break;
+  }
+});
+document.addEventListener('change', e => {
+  const f = e.target.closest('[data-filter]'); if (!f) return;
+  S.ledgerF[f.dataset.filter] = f.value; renderResolve();
+  document.getElementById('f-' + f.dataset.filter)?.focus();
+});
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#q-top').focus(); $('#q-top').select(); }
+  if (e.key === 'Escape' && S.openEx) closeReview();
+});
+$('#scrim').addEventListener('click', closeReview);
+document.addEventListener('toggle', e => { const el = e.target; if (el.dataset && el.dataset.keep) S.keepOpen[el.dataset.keep] = el.open; }, true);
+
+/* ============ Boot ============ */
+(function boot() {
+  $('#ic-top').outerHTML = ic('search');
+  $('#ic-sim').outerHTML = ic('info', 13);
+  $('#reset-side').innerHTML = ic('reset', 13) + 'Reset demo';
+  let t = 'light'; try { t = localStorage.getItem('nb-theme') || 'light'; } catch (e) {}
+  applyTheme(t);
+  attachSearch($('#q-top'), $('#dd-top'));
+  const v = location.hash.slice(1);
+  if (VIEWS.includes(v)) S.view = v;
+  if (window.innerWidth < 980) S.guideCollapsed = true;
+  render();
+})();
+</script>

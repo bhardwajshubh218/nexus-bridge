@@ -1,0 +1,515 @@
+<meta charset="utf-8">
+<title>Nexus Bridge Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0B0C0B; --slide:#121312; --card:#1A1B1A; --card-2:#202120; --card-3:#272827; --code:#151615;
+  --line:#272827; --line-2:#343534;
+  --text:#ECEDEC; --text-2:#C4C6C4; --muted:#8E918E; --faint:#5F625F;
+  --accent:#2EC48A; --accent-hi:#4BD9A0; --accent-bg:#0F241B; --accent-line:#1D4634;
+  --amber:#EAB04E; --amber-bg:#261E10; --amber-line:#4A3918;
+  --blue:#8EB0F2;
+  --sans:'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono:'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%; margin:0}
+body{background:var(--bg); color:var(--text); font-family:var(--sans); overflow:hidden; -webkit-font-smoothing:antialiased}
+button{font:inherit; color:inherit}
+h1,h2,h3,p{margin:0}
+h1,h2{text-wrap:balance}
+.mono{font-family:var(--mono); letter-spacing:-.01em}
+
+.viewport{position:fixed; inset:0 0 64px 0; padding-inline:16px}
+.stage{position:absolute; left:50%; top:50%; width:1600px; height:900px; transform-origin:center; }
+.slide{position:absolute; inset:0; background:var(--slide); border:1px solid var(--line); border-radius:28px; box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 40px 90px -40px rgba(0,0,0,.9); padding:84px 112px 72px; display:flex; flex-direction:column; gap:40px; overflow:hidden; opacity:0; visibility:hidden; transition:opacity .35s ease, visibility .35s}
+.slide.active{opacity:1; visibility:visible}
+.slide::after{content:""; position:absolute; inset:0; border-radius:28px; pointer-events:none; background:radial-gradient(900px 500px at 100% 0%, rgba(46,196,138,.06), transparent 70%)}
+
+.head{display:flex; flex-direction:column; gap:16px; max-width:1180px; position:relative; z-index:1}
+.eyebrow{font:500 15px var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--accent)}
+h2{font-size:58px; line-height:1.06; font-weight:600; letter-spacing:-.03em}
+.lede{font-size:23px; line-height:1.5; color:var(--muted); max-width:62ch}
+.foot{position:absolute; left:112px; right:112px; bottom:34px; display:flex; justify-content:space-between; align-items:center; font-size:14px; color:var(--faint); z-index:1}
+.foot .brand{display:flex; align-items:center; gap:10px; color:var(--muted)}
+.mark{width:26px; height:26px; border-radius:8px; background:var(--accent-bg); border:1px solid var(--accent-line); display:grid; place-items:center; color:var(--accent-hi)}
+.body{flex:1; min-height:0; position:relative; z-index:1}
+.note{font-size:13.5px; color:var(--faint)}
+
+.pill{display:inline-flex; align-items:center; gap:8px; height:34px; padding:0 14px; border-radius:999px; font-size:15px; font-weight:500; background:var(--card-2); border:1px solid var(--line-2); color:var(--text-2); white-space:nowrap}
+.pill.ok{background:var(--accent-bg); border-color:var(--accent-line); color:var(--accent-hi)}
+.pill.warn{background:var(--amber-bg); border-color:var(--amber-line); color:var(--amber)}
+.card{background:var(--card); border:1px solid var(--line); border-radius:18px}
+
+/* ---- Slide 1 ---- */
+.s1{justify-content:center}
+.s1 .grid{display:grid; grid-template-columns:1fr 640px; gap:48px; align-items:center; flex:1}
+.s1 h1{font-size:96px; line-height:.98; font-weight:600; letter-spacing:-.045em}
+.s1 h1 span{color:var(--accent-hi)}
+.s1 .lede{margin-top:28px; font-size:25px; max-width:30ch; color:var(--text-2)}
+.s1 .tags{display:flex; gap:10px; margin-top:36px; flex-wrap:wrap}
+.conv text{font-family:var(--mono)}
+
+/* ---- Slide 2 ---- */
+.s2 .grid{display:grid; grid-template-columns:1fr 420px; gap:40px; height:100%}
+.silos{display:grid; grid-template-columns:1fr 1fr; gap:18px}
+.silo{padding:24px 26px; display:flex; flex-direction:column; gap:14px; position:relative}
+.silo .sys{display:flex; justify-content:space-between; align-items:center}
+.silo .sys b{font-size:22px; font-weight:600}
+.silo .sys span{font-size:14px; color:var(--faint)}
+.silo .id{font:500 26px var(--mono); color:var(--text)}
+.silo .as{font-size:15px; color:var(--muted)}
+.silo .as em{font-style:normal; color:var(--amber); font-family:var(--mono); font-size:15px}
+.silo .key{font-size:13.5px; color:var(--faint); display:flex; align-items:center; gap:8px; border-top:1px dashed var(--line-2); padding-top:12px}
+.stats{display:flex; flex-direction:column; gap:14px}
+.stat{padding:22px 24px}
+.stat .v{font-size:52px; font-weight:500; letter-spacing:-.03em; line-height:1}
+.stat .v small{font-size:22px; color:var(--muted); font-weight:400}
+.stat .l{font-size:16px; color:var(--muted); margin-top:8px}
+.risk{padding:20px 22px; border-radius:18px; background:var(--amber-bg); border:1px solid var(--amber-line); color:var(--text-2); font-size:16.5px; line-height:1.5; display:flex; gap:12px}
+.risk svg{flex:none; color:var(--amber); margin-top:3px}
+
+/* ---- Slide 3 ---- */
+.pillars{display:grid; grid-template-columns:repeat(3,1fr); gap:22px; height:100%}
+.pillar{padding:28px; display:flex; flex-direction:column; gap:16px}
+.pillar .ic{width:44px; height:44px; border-radius:12px; display:grid; place-items:center; background:var(--accent-bg); border:1px solid var(--accent-line); color:var(--accent-hi)}
+.pillar.amb .ic{background:var(--amber-bg); border-color:var(--amber-line); color:var(--amber)}
+.pillar h3{font-size:26px; font-weight:600; letter-spacing:-.015em}
+.pillar p{font-size:17px; line-height:1.5; color:var(--muted)}
+.pillar .vis{margin-top:auto}
+.rules{display:flex; flex-direction:column; gap:8px}
+.rule{display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:var(--card-2); border:1px solid var(--line); border-radius:10px; font:500 14.5px var(--mono); color:var(--text-2)}
+.rule span{font-family:var(--sans); font-size:13px; color:var(--accent)}
+.rule.no{color:var(--faint)} .rule.no span{color:var(--amber)}
+.code{background:var(--code); border:1px solid var(--line); border-radius:12px; padding:12px 0; font:14px/1.8 var(--mono)}
+.code div{padding:0 16px; border-left:2px solid transparent; white-space:pre}
+.code .k{color:#C9CCC9} .code .s{color:#9FD9BE} .code .p{color:var(--faint)}
+.code .inj{background:var(--accent-bg); border-left-color:var(--accent)}
+.code .inj .k{color:var(--accent-hi)}
+.meter{background:var(--card-2); border:1px solid var(--line); border-radius:12px; padding:16px}
+.meter .top{display:flex; justify-content:space-between; font-size:14px; color:var(--muted)}
+.meter .top b{font-size:24px; color:var(--amber); font-weight:500}
+.meter .bar{position:relative; height:10px; border-radius:999px; background:var(--card-3); margin:14px 0 26px}
+.meter .bar i{position:absolute; inset:0 auto 0 0; width:82%; border-radius:999px; background:var(--amber)}
+.meter .bar b{position:absolute; left:95%; top:-6px; bottom:-6px; width:2px; background:var(--text)}
+.meter .bar span{position:absolute; left:95%; top:18px; transform:translateX(-100%); font-size:12.5px; color:var(--text-2); white-space:nowrap}
+.meter .route{display:flex; align-items:center; gap:10px; font-size:14px; color:var(--muted)}
+.band{display:flex; align-items:center; gap:14px; font-size:18px; color:var(--text-2); padding:16px 22px; border-radius:14px; border:1px dashed var(--line-2)}
+.band svg{color:var(--accent-hi); flex:none}
+
+/* ---- Slide 4 ---- */
+.arch{width:100%; height:100%}
+.arch .box rect{fill:var(--card); stroke:var(--line-2); stroke-width:1.2}
+.arch .box.acc rect{fill:var(--accent-bg); stroke:var(--accent)}
+.arch .box.amb rect{fill:var(--amber-bg); stroke:var(--amber-line)}
+.arch .box.ui rect{fill:var(--card-2); stroke:var(--accent-line); stroke-dasharray:5 4}
+.arch .t{fill:var(--text); font:600 17px var(--sans)}
+.arch .s{fill:var(--muted); font:400 13.5px var(--sans)}
+.arch .m{fill:var(--text-2); font:500 14px var(--mono)}
+.arch .acc .t{fill:var(--accent-hi)}
+.arch .amb .t{fill:var(--amber)}
+.arch .edge{fill:none; stroke:var(--faint); stroke-width:1.5}
+.arch .edge.hot{stroke:var(--accent)}
+.arch .edge.warn{stroke:var(--amber); stroke-dasharray:6 5}
+.arch .lbl{fill:var(--muted); font:500 12.5px var(--mono)}
+.arch .lbl.warn{fill:var(--amber)} .arch .lbl.hot{fill:var(--accent-hi)}
+.arch .group{fill:none; stroke:var(--line-2); stroke-dasharray:4 5}
+.arch .gl{fill:var(--faint); font:500 12px var(--mono); letter-spacing:.1em}
+
+/* ---- Slide 5 ---- */
+.s5 .grid{display:grid; grid-template-columns:470px 1fr; gap:48px; height:100%}
+.steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
+.step{display:grid; grid-template-columns:40px 1fr; gap:16px; align-items:start; padding:13px 16px; border-radius:14px}
+.step .n{width:34px; height:34px; border-radius:50%; display:grid; place-items:center; font:500 14px var(--mono); border:1px solid var(--accent-line); background:var(--accent-bg); color:var(--accent-hi)}
+.step.w .n{border-color:var(--amber-line); background:var(--amber-bg); color:var(--amber)}
+.step b{display:block; font-size:19px; font-weight:500}
+.step div > span{display:block; font-size:15px; color:var(--muted); margin-top:2px}
+.step span .mono{color:var(--text-2); font-size:14px}
+.mock{position:relative; height:100%}
+.win{position:absolute; inset:0 90px 70px 0; background:var(--bg); border:1px solid var(--line-2); border-radius:18px; padding:16px; display:grid; grid-template-columns:150px 1fr; gap:14px; overflow:hidden; box-shadow:0 30px 70px -30px rgba(0,0,0,.9)}
+.side{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 10px; display:flex; flex-direction:column; gap:6px}
+.side .nb{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; padding:0 4px 12px}
+.side i{display:flex; align-items:center; gap:8px; height:30px; padding:0 10px; border-radius:8px; font-style:normal; font-size:12px; color:var(--muted)}
+.side i.on{background:var(--card-2); color:var(--text); border:1px solid var(--line-2)}
+.side i em{margin-left:auto; font-style:normal; font-size:10.5px; color:var(--amber); background:var(--amber-bg); border:1px solid var(--amber-line); border-radius:999px; padding:0 6px}
+.mainm{display:flex; flex-direction:column; gap:12px; min-width:0}
+.bar-top{height:42px; background:var(--card); border:1px solid var(--line); border-radius:12px; display:flex; align-items:center; padding:0 14px; gap:10px}
+.bar-top .q{flex:1; height:28px; border-radius:8px; background:var(--card-2); border:1px solid var(--line); display:flex; align-items:center; padding:0 10px; font:12.5px var(--mono); color:var(--text-2)}
+.ent{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px}
+.ent .r1{display:flex; align-items:center; gap:12px}
+.ent .lg{width:38px; height:38px; border-radius:10px; background:var(--card-3); border:1px solid var(--line-2); display:grid; place-items:center; font-weight:600; font-size:13px; color:var(--text-2)}
+.ent h4{margin:0; font-size:19px; font-weight:600}
+.ent .pill{height:24px; font-size:11.5px; padding:0 10px}
+.trace{font:12px var(--mono); color:var(--muted); padding:8px 12px; border:1px dashed var(--line-2); border-radius:8px; background:var(--code)}
+.trace b{color:var(--accent-hi); font-weight:500}
+.cols{display:grid; grid-template-columns:1.3fr 1fr; gap:12px; flex:1; min-height:0}
+.panel{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px; min-height:0}
+.panel .h{font-size:12.5px; color:var(--muted)}
+.panel .big{font-size:26px; font-weight:500; letter-spacing:-.02em}
+.stack{display:flex; gap:2px; height:8px; border-radius:999px; overflow:hidden}
+.legend{display:flex; flex-direction:column; gap:7px; font-size:12px; color:var(--text-2)}
+.legend div{display:flex; justify-content:space-between}
+.review{position:absolute; right:0; bottom:0; width:390px; background:var(--card-2); border:1px solid var(--line-2); border-radius:16px; padding:18px; display:flex; flex-direction:column; gap:12px; box-shadow:0 30px 70px -20px rgba(0,0,0,.95)}
+.review .h{display:flex; align-items:center; gap:10px; font-size:16px; font-weight:600}
+.review .pill{height:22px; font-size:11px; padding:0 9px; letter-spacing:.05em}
+.review p{font-size:13.5px; color:var(--text-2); line-height:1.5}
+.review .btns{display:flex; gap:8px}
+.review .btns span{height:32px; display:inline-flex; align-items:center; padding:0 14px; border-radius:999px; font-size:12.5px; font-weight:500; background:var(--card-3); border:1px solid var(--line-2)}
+.review .btns span.p{background:var(--accent); color:#04140D; border-color:transparent}
+.review .mini{height:6px; border-radius:999px; background:var(--card-3); position:relative}
+.review .mini i{position:absolute; inset:0 auto 0 0; width:82%; background:var(--amber); border-radius:999px}
+.review .mini b{position:absolute; left:95%; top:-4px; bottom:-4px; width:2px; background:var(--text)}
+
+/* ---- Slide 6 ---- */
+.s6 .body{display:flex; flex-direction:column; gap:28px}
+.kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:18px}
+.kpi{padding:24px 26px; display:flex; flex-direction:column; gap:10px}
+.kpi .l{font-size:15px; color:var(--muted)}
+.kpi .v{display:flex; align-items:baseline; gap:12px; font-weight:500; letter-spacing:-.03em}
+.kpi .from{font-size:26px; color:var(--faint); text-decoration:line-through; text-decoration-thickness:1.5px}
+.kpi .to{font-size:50px; color:var(--accent-hi); line-height:1}
+.kpi .d{font-size:14px; color:var(--faint)}
+.road{display:grid; grid-template-columns:repeat(4,1fr); gap:18px; position:relative}
+.phase{padding:22px 24px; display:flex; flex-direction:column; gap:10px; position:relative}
+.phase .tag{font:500 13px var(--mono); color:var(--accent); letter-spacing:.08em; text-transform:uppercase}
+.phase h3{font-size:22px; font-weight:600; letter-spacing:-.01em}
+.phase p{font-size:15.5px; color:var(--muted); line-height:1.45}
+.phase .exit{margin-top:auto; font-size:13.5px; color:var(--text-2); border-top:1px dashed var(--line-2); padding-top:10px}
+.phase .exit span{color:var(--faint)}
+.phase:not(:last-child)::after{content:""; position:absolute; top:34px; right:-18px; width:18px; height:1.5px; background:var(--accent-line)}
+.closing{display:flex; align-items:center; justify-content:space-between; gap:20px; padding:20px 26px; border-radius:18px; background:linear-gradient(90deg, var(--accent-bg), var(--card) 80%); border:1px solid var(--accent-line)}
+.closing b{font-size:22px; font-weight:600}
+.closing span{font-size:16px; color:var(--muted)}
+
+/* ---- Controls ---- */
+.controls{position:fixed; left:0; right:0; bottom:0; height:64px; display:flex; align-items:center; justify-content:center; gap:16px; padding-inline:16px; padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav-btn{width:40px; height:40px; border-radius:50%; border:1px solid var(--line-2); background:var(--card); color:var(--text); display:grid; place-items:center; cursor:pointer}
+.nav-btn:hover{background:var(--card-3)}
+.nav-btn[disabled]{opacity:.35; cursor:default}
+.dots{display:flex; gap:6px}
+.dots button{width:28px; height:4px; border-radius:999px; border:0; padding:0; background:var(--line-2); cursor:pointer}
+.dots button.on{background:var(--accent)}
+.count{font:500 13px var(--mono); color:var(--muted); min-width:48px; text-align:center}
+.hint{position:absolute; right:20px; font-size:12.5px; color:var(--faint)}
+:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
+@media (max-width:700px){ .hint{display:none} }
+@media (prefers-reduced-motion:reduce){ .slide{transition:none} }
+</style>
+
+<div class="viewport"><div class="stage" id="stage">
+
+  <!-- 1 · Title -->
+  <section class="slide s1" data-title="Title">
+    <div class="grid">
+      <div>
+        <div class="eyebrow">Fintech hackathon · Merchant identity</div>
+        <h1 style="margin-top:22px">One merchant.<br><span>One identity.</span></h1>
+        <p class="lede">Nexus Bridge links every legacy merchant record to a single canonical ID, stamps it onto every transaction, and never guesses when records conflict.</p>
+        <div class="tags"><span class="pill ok">Deterministic resolution</span><span class="pill">Identity stamping</span><span class="pill">Zero auto-merges</span></div>
+      </div>
+      <svg class="conv" viewBox="0 0 640 520" width="640" height="520" aria-label="Four legacy IDs converge into one canonical ID">
+        <g fill="none" stroke-width="1.6">
+          <path d="M226,76 C330,76 330,260 400,260" stroke="#1D4634"/>
+          <path d="M226,196 C320,196 330,260 400,260" stroke="#1D4634"/>
+          <path d="M226,324 C320,324 330,260 400,260" stroke="#1D4634"/>
+          <path d="M226,444 C330,444 330,260 400,260" stroke="#1D4634"/>
+        </g>
+        <g>
+          <rect x="16" y="46" width="210" height="60" rx="14" fill="#1A1B1A" stroke="#343534"/>
+          <text x="36" y="70" fill="#8E918E" font-size="11" font-family="Geist, sans-serif" letter-spacing="1.2">PASSPORT</text>
+          <text x="36" y="92" fill="#ECEDEC" font-size="16" font-weight="500">Passport-A1B2</text>
+          <rect x="16" y="166" width="210" height="60" rx="14" fill="#1A1B1A" stroke="#343534"/>
+          <text x="36" y="190" fill="#8E918E" font-size="11" font-family="Geist, sans-serif" letter-spacing="1.2">MXM</text>
+          <text x="36" y="212" fill="#ECEDEC" font-size="16" font-weight="500">MXM-77329</text>
+          <rect x="16" y="294" width="210" height="60" rx="14" fill="#1A1B1A" stroke="#343534"/>
+          <text x="36" y="318" fill="#8E918E" font-size="11" font-family="Geist, sans-serif" letter-spacing="1.2">CPX</text>
+          <text x="36" y="340" fill="#ECEDEC" font-size="16" font-weight="500">CPX-0991</text>
+          <rect x="16" y="414" width="210" height="60" rx="14" fill="#1A1B1A" stroke="#343534"/>
+          <text x="36" y="438" fill="#8E918E" font-size="11" font-family="Geist, sans-serif" letter-spacing="1.2">ACH</text>
+          <text x="36" y="460" fill="#ECEDEC" font-size="16" font-weight="500">ACH-55120</text>
+        </g>
+        <circle cx="400" cy="260" r="5" fill="#2EC48A"/>
+        <rect x="400" y="214" width="228" height="92" rx="18" fill="#0F241B" stroke="#2EC48A" stroke-width="1.5"/>
+        <text x="424" y="246" fill="#2EC48A" font-size="11.5" font-family="Geist, sans-serif" letter-spacing="1.4">CANONICAL · SES</text>
+        <text x="424" y="276" fill="#4BD9A0" font-size="21" font-weight="500">SES-8842-ACME</text>
+        <text x="424" y="296" fill="#8E918E" font-size="12" font-family="Geist, sans-serif">Acme Retail LLC</text>
+      </svg>
+    </div>
+    <div class="foot"><span class="brand"><span class="mark"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="8.5" cy="12" r="5"/><circle cx="15.5" cy="12" r="5"/></svg></span>Nexus Bridge</span><span>Working prototype included · nexus-bridge-prototype.html</span></div>
+  </section>
+
+  <!-- 2 · Problem -->
+  <section class="slide s2" data-title="Problem">
+    <div class="head">
+      <div class="eyebrow">The problem</div>
+      <h2>Today, one merchant is four strangers</h2>
+    </div>
+    <div class="body"><div class="grid">
+      <div class="silos">
+        <div class="card silo"><div class="sys"><b>Passport</b><span>KYC identity</span></div><div class="id">Passport-A1B2</div><div class="as">Stored as <em>Acme Retail LLC</em></div><div class="key">No shared key with MXM, CPX or ACH</div></div>
+        <div class="card silo"><div class="sys"><b>MXM</b><span>Merchant accounts</span></div><div class="id">MXM-77329</div><div class="as">Stored as <em>ACME RETAIL</em></div><div class="key">Balances live here, identity doesn't</div></div>
+        <div class="card silo"><div class="sys"><b>CPX</b><span>Card processing</span></div><div class="id">CPX-0991</div><div class="as">Stored as <em>Acme Retail L.L.C.</em></div><div class="key">Settlements keyed by processor ID</div></div>
+        <div class="card silo"><div class="sys"><b>ACH</b><span>Bank payouts</span></div><div class="id">ACH-55120</div><div class="as">Stored as <em>ACME RTL LLC</em></div><div class="key">Payouts keyed by bank account</div></div>
+      </div>
+      <div class="stats">
+        <div class="card stat"><div class="v">4 <small>systems</small></div><div class="l">to answer one support question about one merchant</div></div>
+        <div class="card stat"><div class="v">0 <small>shared keys</small></div><div class="l">between the four systems, so every match is done by hand</div></div>
+        <div class="risk"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 4.2 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4M12 17h.01"/></svg><span>In money movement, a wrong manual match can send funds to the wrong entity. Near-duplicates like <b class="mono" style="font-weight:500">L.L.C.</b> vs <b class="mono" style="font-weight:500">LLC</b> make that easy.</span></div>
+      </div>
+    </div></div>
+    <div class="foot"><span>All merchant data in this deck is fictional.</span><span>02</span></div>
+  </section>
+
+  <!-- 3 · Solution -->
+  <section class="slide s3" data-title="Solution">
+    <div class="head">
+      <div class="eyebrow">The solution</div>
+      <h2>A bridge layer that links identities, without migrating anything</h2>
+    </div>
+    <div class="body" style="display:flex;flex-direction:column;gap:22px">
+      <div class="pillars" style="flex:1">
+        <div class="card pillar">
+          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.6"/><circle cx="5" cy="5" r="1.8"/><circle cx="19" cy="5" r="1.8"/><circle cx="5" cy="19" r="1.8"/><circle cx="19" cy="19" r="1.8"/><path d="m6.4 6.4 3.7 3.7M17.6 6.4l-3.7 3.7M6.4 17.6l3.7-3.7M17.6 17.6l-3.7-3.7"/></svg></div>
+          <h3>Nexus Registry</h3>
+          <p>Resolves a legacy ID to its SES canonical ID only when exactly one mapping exists.</p>
+          <div class="vis rules">
+            <div class="rule">exact_key<span>links</span></div>
+            <div class="rule">tax_id + legal_name<span>links</span></div>
+            <div class="rule">bank_acct + tax_id<span>links</span></div>
+            <div class="rule no">name similarity 0.96<span>never links alone</span></div>
+          </div>
+        </div>
+        <div class="card pillar">
+          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M13 3 4.5 13.5H11L10 21l8.5-10.5H12z"/></svg></div>
+          <h3>Identity stamping</h3>
+          <p>Every transaction payload gets canonical IDs injected in flight. Legacy fields stay exactly as they were.</p>
+          <div class="vis code">
+<div><span class="k">"txn_id"</span><span class="p">: </span><span class="s">"TXN-…44810"</span><span class="p">,</span></div>
+<div><span class="k">"source_mxm_id"</span><span class="p">: </span><span class="s">"MXM-77329"</span><span class="p">,</span></div>
+<div><span class="k">"amount"</span><span class="p">: </span><span class="s">12880.00</span><span class="p">,</span></div>
+<div class="inj"><span class="k">"source_canonical_id"</span><span class="p">: </span><span class="s">"SES-8842-ACME"</span><span class="p">,</span></div>
+<div class="inj"><span class="k">"destination_canonical_id"</span><span class="p">: </span><span class="s">"SES-9001-BETA"</span></div>
+          </div>
+        </div>
+        <div class="card pillar amb">
+          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></div>
+          <h3>Safe exceptions</h3>
+          <p>Missing, conflicting or ambiguous mappings are held for a person to decide. Similarity scores never decide anything.</p>
+          <div class="vis rules">
+            <div class="rule">one candidate entity<span>pass</span></div>
+            <div class="rule no">tax_id exact · 4421 vs 4422<span>fail</span></div>
+            <div class="rule no">settlement bank exact<span>fail</span></div>
+            <div class="rule no" style="color:var(--amber)">MXM-99110 → review queue<span>not merged</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="band"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Legacy systems stay unchanged. Fields are only added, never renamed or removed, and stamping can be switched off with a flag.</div>
+    </div>
+    <div class="foot"><span></span><span>03</span></div>
+  </section>
+
+  <!-- 4 · Architecture -->
+  <section class="slide s4" data-title="Architecture">
+    <div class="head">
+      <div class="eyebrow">System architecture</div>
+      <h2>How it fits into the systems we already run</h2>
+    </div>
+    <div class="body">
+      <svg class="arch" viewBox="0 0 1376 600" preserveAspectRatio="xMidYMid meet" aria-label="Target production architecture">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5F625F"/></marker>
+          <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2EC48A"/></marker>
+          <marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#EAB04E"/></marker>
+        </defs>
+
+        <!-- legacy group -->
+        <rect class="group" x="8" y="8" width="224" height="300" rx="16"/>
+        <text class="gl" x="26" y="34">LEGACY · UNCHANGED</text>
+        <g class="box"><rect x="26" y="50" width="188" height="52" rx="10"/><text class="t" x="44" y="82">Passport</text></g>
+        <g class="box"><rect x="26" y="112" width="188" height="52" rx="10"/><text class="t" x="44" y="144">MXM</text></g>
+        <g class="box"><rect x="26" y="174" width="188" height="52" rx="10"/><text class="t" x="44" y="206">CPX</text></g>
+        <g class="box"><rect x="26" y="236" width="188" height="52" rx="10"/><text class="t" x="44" y="268">ACH</text></g>
+
+        <!-- row 1 -->
+        <g class="box"><rect x="290" y="118" width="210" height="96" rx="12"/><text class="t" x="310" y="154">CDC connectors</text><text class="s" x="310" y="178">Change events from</text><text class="s" x="310" y="196">all four systems → Kafka</text></g>
+        <g class="box"><rect x="558" y="118" width="230" height="96" rx="12"/><text class="t" x="578" y="154">Identity Linker</text><text class="s" x="578" y="178">Deterministic rules engine</text><text class="s" x="578" y="196">exact keys only</text></g>
+        <g class="box acc"><rect x="846" y="104" width="230" height="124" rx="14"/><text class="t" x="866" y="142">SES identity graph</text><text class="s" x="866" y="166">Canonical IDs + links</text><text class="m" x="866" y="196">PostgreSQL</text></g>
+        <g class="box"><rect x="1134" y="60" width="230" height="84" rx="12"/><text class="t" x="1154" y="96">Resolution API</text><text class="m" x="1154" y="122">GET /v1/identity/resolve</text></g>
+        <g class="box ui"><rect x="1134" y="182" width="230" height="84" rx="12"/><text class="t" x="1154" y="218">Ops Console</text><text class="s" x="1154" y="242" style="fill:var(--accent-hi)">Our working prototype</text></g>
+
+        <!-- row 2 -->
+        <g class="box amb"><rect x="558" y="300" width="230" height="84" rx="12"/><text class="t" x="578" y="336">Exception review</text><text class="s" x="578" y="360">Maker-checker approvals</text></g>
+        <g class="box"><rect x="846" y="300" width="230" height="84" rx="12"/><text class="t" x="866" y="336">Read cache</text><text class="m" x="866" y="362">legacy_id → SES · Redis</text></g>
+
+        <!-- row 3 -->
+        <g class="box"><rect x="26" y="446" width="206" height="84" rx="12"/><text class="t" x="46" y="482">Payment gateway</text><text class="s" x="46" y="506">ACH batch · card</text></g>
+        <g class="box acc"><rect x="558" y="446" width="230" height="84" rx="12"/><text class="t" x="578" y="482">Stamping middleware</text><text class="m" x="578" y="508">inline · target p95 &lt; 20 ms</text></g>
+        <g class="box"><rect x="1134" y="446" width="230" height="84" rx="12"/><text class="t" x="1154" y="482">Downstream routes</text><text class="s" x="1154" y="506">Legacy consumers, unchanged</text></g>
+
+        <!-- audit strip -->
+        <rect x="290" y="560" width="1074" height="36" rx="10" fill="#151615" stroke="#343534" stroke-dasharray="4 5"/>
+        <text class="m" x="310" y="583" style="fill:var(--muted)">Append-only audit ledger · every link, stamp, block and human decision</text>
+
+        <!-- edges -->
+        <path class="edge" d="M232,166 L286,166" marker-end="url(#ah)"/>
+        <path class="edge" d="M500,166 L554,166" marker-end="url(#ah)"/>
+        <path class="edge hot" d="M788,166 L842,166" marker-end="url(#ahg)"/>
+        <text class="lbl hot" x="793" y="154">link</text>
+        <path class="edge" d="M1076,140 C1104,140 1104,102 1130,102" marker-end="url(#ah)"/>
+        <path class="edge" d="M1249,148 L1249,178" marker-start="url(#ah)" marker-end="url(#ah)"/>
+        <path class="edge warn" d="M650,214 L650,296" marker-end="url(#aha)"/>
+        <text class="lbl warn" x="590" y="262">&lt; 95% or</text>
+        <text class="lbl warn" x="590" y="278">key conflict</text>
+        <path class="edge" d="M788,326 C816,326 816,214 842,214" marker-end="url(#ah)"/>
+        <text class="lbl" x="796" y="280">decide</text>
+        <path class="edge" d="M961,228 L961,296" marker-end="url(#ah)"/>
+        <text class="lbl" x="970" y="268">sync</text>
+        <path class="edge hot" d="M232,488 L554,488" marker-end="url(#ahg)"/>
+        <text class="lbl" x="300" y="478">legacy payload</text>
+        <path class="edge" d="M788,460 C830,460 900,420 918,388" marker-end="url(#ah)"/>
+        <text class="lbl" x="846" y="424">lookup</text>
+        <path class="edge warn" d="M720,446 L720,388" marker-end="url(#aha)"/>
+        <text class="lbl warn" x="728" y="424">held</text>
+        <path class="edge hot" d="M788,506 L1130,506" marker-end="url(#ahg)"/>
+        <text class="lbl hot" x="850" y="498">+ canonical IDs</text>
+      </svg>
+    </div>
+    <div class="foot"><span>Green: happy path · Amber: fail-closed path</span><span>04</span></div>
+  </section>
+
+  <!-- 5 · Prototype -->
+  <section class="slide s5" data-title="Prototype">
+    <div class="head">
+      <div class="eyebrow">Working prototype</div>
+      <h2>One merchant, followed end to end</h2>
+    </div>
+    <div class="body"><div class="grid">
+      <ol class="steps">
+        <li class="step"><span class="n">1</span><div><b>Resolve a merchant</b><span><span class="mono">MXM-77329</span> → <span class="mono">SES-8842-ACME</span>, exact unique mapping</span></div></li>
+        <li class="step"><span class="n">2</span><div><b>Stamp a transaction</b><span>Canonical IDs added, every original field kept</span></div></li>
+        <li class="step"><span class="n">3</span><div><b>Route a card payment</b><span><span class="mono">MXM-84721</span> → <span class="mono">SES-10294</span> → tenant ✓ products ✓ → MXM</span></div></li>
+        <li class="step w"><span class="n">4</span><div><b>Block a pending merchant</b><span>Payout stopped at the pre-flight entitlement check</span></div></li>
+        <li class="step w"><span class="n">5</span><div><b>Review the Tax ID conflict</b><span>4421 vs 4422, so a new independent entity</span></div></li>
+        <li class="step"><span class="n">6</span><div><b>Publish an SES event</b><span>Kafka updates the cache, the next check changes</span></div></li>
+      </ol>
+      <div class="mock" aria-hidden="true">
+        <div class="win">
+          <div class="side">
+            <div class="nb"><span class="mark" style="width:22px;height:22px;border-radius:7px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8.5" cy="12" r="5"/><circle cx="15.5" cy="12" r="5"/></svg></span>Nexus Bridge</div>
+            <i class="on">Resolve</i><i>Stamping simulator</i><i>Exception queue<em>3</em></i><i>Audit trail</i>
+          </div>
+          <div class="mainm">
+            <div class="bar-top"><div class="q">MXM-77329</div><span class="pill ok" style="height:24px;font-size:11px">4 sources synced</span></div>
+            <div class="ent">
+              <div class="r1"><div class="lg">AR</div><div><h4>Acme Retail LLC</h4></div><span class="pill ok">Canonical ID: <span class="mono">SES-8842-ACME</span></span></div>
+              <div class="trace">Resolved MXM-77329 → <b>exact unique mapping · 1 of 1</b> → <b>SES-8842-ACME</b></div>
+            </div>
+            <div class="cols">
+              <div class="panel"><div class="h">Identity graph</div>
+                <svg viewBox="0 0 300 150" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+                  <g fill="none" stroke="#1D4634" stroke-width="1.4"><path d="M80,25 C105,25 105,75 115,75"/><path d="M220,25 C195,25 195,75 185,75"/><path d="M80,125 C105,125 105,75 115,75"/><path d="M220,125 C195,125 195,75 185,75"/></g>
+                  <g fill="#202120" stroke="#343534"><rect x="4" y="10" width="76" height="30" rx="7"/><rect x="220" y="10" width="76" height="30" rx="7"/><rect x="4" y="110" width="76" height="30" rx="7"/><rect x="220" y="110" width="76" height="30" rx="7"/></g>
+                  <g font-family="Geist Mono, monospace" font-size="9" fill="#ECEDEC"><text x="12" y="29">MXM-77329</text><text x="228" y="29">CPX-0991</text><text x="10" y="129">Passport-A1B2</text><text x="228" y="129">ACH-55120</text></g>
+                  <rect x="115" y="60" width="70" height="30" rx="7" fill="#0F241B" stroke="#2EC48A"/>
+                  <text x="121" y="79" font-family="Geist Mono, monospace" font-size="8" fill="#4BD9A0">SES-8842-ACME</text>
+                </svg>
+              </div>
+              <div class="panel"><div class="h">USD available · 3 sub-accounts</div><div class="big">$316,630.69</div>
+                <div class="stack"><i style="width:58%;background:#2EC48A"></i><i style="width:29%;background:#23916A"></i><i style="width:13%;background:#1A5E46"></i></div>
+                <div class="legend"><div><span>Operating · MXM</span><span>$184,220.14</span></div><div><span>Settlement · CPX</span><span>$92,410.55</span></div><div><span>Reserve · ACH</span><span>$40,000.00</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="review">
+          <div class="h">Review EX-3021 <span class="pill warn">UNRESOLVED</span></div>
+          <div style="font:12px var(--mono);color:var(--muted)">tax_id exact <span style="color:#EE6B6B">✕</span> · bank exact <span style="color:#EE6B6B">✕</span> · approval blocked</div>
+          <p><b style="color:var(--amber);font-weight:500">AI Alert:</b> Business names match (fuzzy logic), but Incoming Tax ID ends in 4421, while System Tax ID ends in 4422. Auto-merge prevented.</p>
+          <div class="btns"><span class="p">Create New Independent Entity</span><span>Merge Entities</span></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="foot"><span>Runs offline in any browser: open nexus-bridge-prototype.html</span><span>05</span></div>
+  </section>
+
+  <!-- 6 · Impact -->
+  <section class="slide s6" data-title="Impact">
+    <div class="head">
+      <div class="eyebrow">Impact and rollout</div>
+      <h2>Faster answers, safer money movement</h2>
+    </div>
+    <div class="body">
+      <div class="kpis">
+        <div class="card kpi"><span class="l">Systems an agent opens</span><span class="v"><span class="from">4</span><span class="to">1</span></span><span class="d">One search, any legacy ID</span></div>
+        <div class="card kpi"><span class="l">Canonical IDs per merchant</span><span class="v"><span class="to">1</span></span><span class="d">Same ID in search, stamping and ledger</span></div>
+        <div class="card kpi"><span class="l">Legacy fields changed</span><span class="v"><span class="to">0</span></span><span class="d">Stamping only adds fields</span></div>
+        <div class="card kpi"><span class="l">Automatic merges</span><span class="v"><span class="to">0</span></span><span class="d">Unresolved records go to a person</span></div>
+      </div>
+      <div class="road">
+        <div class="card phase"><span class="tag">Phase 1</span><h3>Shadow mode</h3><p>Build the SES graph from CDC. Stamper observes and logs only.</p><div class="exit"><span>Exit:</span> zero false links in sampled audit</div></div>
+        <div class="card phase"><span class="tag">Phase 2</span><h3>Read path</h3><p>Resolution API and Ops Console go live for Support.</p><div class="exit"><span>Exit:</span> p95 lookup under 25 ms</div></div>
+        <div class="card phase"><span class="tag">Phase 3</span><h3>Write path</h3><p>Inline stamping on ACH first, then card traffic.</p><div class="exit"><span>Exit:</span> no downstream schema breaks</div></div>
+        <div class="card phase"><span class="tag">Phase 4</span><h3>Governance</h3><p>Maker-checker merges and audit export to compliance.</p><div class="exit"><span>Exit:</span> two approvers on every merge</div></div>
+      </div>
+      <div class="closing"><div><b>Next step: a shadow-mode pilot on ACH traffic</b><br><span>No legacy changes needed to start. Stamping is additive and can be switched off with a flag.</span></div><span class="pill ok">Prototype ready to demo</span></div>
+    </div>
+    <div class="foot"><span>Time and cost savings to be measured in the shadow-mode pilot.</span><span>06</span></div>
+  </section>
+
+</div></div>
+
+<nav class="controls" aria-label="Slides">
+  <button class="nav-btn" id="prev" aria-label="Previous slide"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m15 6-6 6 6 6"/></svg></button>
+  <div class="dots" id="dots"></div>
+  <span class="count" id="count">1 / 6</span>
+  <button class="nav-btn" id="next" aria-label="Next slide"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></button>
+  <span class="hint">← → to navigate · F for fullscreen</span>
+</nav>
+
+<script>
+const slides = [...document.querySelectorAll('.slide')];
+const stage = document.getElementById('stage');
+let cur = 0;
+const dots = document.getElementById('dots');
+slides.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.setAttribute('aria-label', `Slide ${i + 1}: ${s.dataset.title}`);
+  b.onclick = () => show(i);
+  dots.appendChild(b);
+});
+function fit() {
+  const vp = stage.parentElement.getBoundingClientRect();
+  const s = Math.min((vp.width - 32) / 1600, (vp.height - 24) / 900);
+  stage.style.transform = `translate(-50%,-50%) scale(${Math.max(s, .1)})`;
+}
+function show(i) {
+  cur = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((s, j) => { s.classList.toggle('active', j === cur); s.setAttribute('aria-hidden', j !== cur); });
+  [...dots.children].forEach((d, j) => d.classList.toggle('on', j === cur));
+  document.getElementById('count').textContent = `${cur + 1} / ${slides.length}`;
+  document.getElementById('prev').disabled = cur === 0;
+  document.getElementById('next').disabled = cur === slides.length - 1;
+  try { history.replaceState(null, '', '#s' + (cur + 1)); } catch (e) {}
+}
+document.getElementById('prev').onclick = () => show(cur - 1);
+document.getElementById('next').onclick = () => show(cur + 1);
+document.addEventListener('keydown', e => {
+  if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(cur + 1); }
+  if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+  if (e.key === 'Home') show(0);
+  if (e.key === 'End') show(slides.length - 1);
+  if (e.key.toLowerCase() === 'f') {
+    try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); } catch (err) {}
+  }
+});
+let tx = null;
+document.addEventListener('touchstart', e => tx = e.touches[0].clientX, { passive: true });
+document.addEventListener('touchend', e => { if (tx === null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) show(cur + (dx < 0 ? 1 : -1)); tx = null; });
+window.addEventListener('resize', fit);
+const m = location.hash.match(/^#s(\d)$/);
+fit(); show(m ? +m[1] - 1 : 0);
+</script>
